@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   CheckCircle2,
   ChevronRight,
+  FileText,
   Loader2,
   Package,
   Truck,
@@ -553,74 +554,209 @@ function GPayStep({
   );
 }
 
-// ─── Step 3: Order success ─────────────────────────────────────────────────────
+// ─── Step 3: Order success + Invoice ──────────────────────────────────────────
 
 function SuccessStep({
   subtotal,
   paymentMethod,
+  cartItems,
+  products,
+  userName,
   onClose,
 }: {
   subtotal: number;
   paymentMethod: PaymentMethod;
+  cartItems: CartItem[];
+  products: SeedProduct[];
+  userName?: string | null;
   onClose: () => void;
 }) {
   const isCod = paymentMethod === "cod";
-  const amount = formatPrice(subtotal);
+  const shipping = 0; // free shipping
+  const tax = Math.round(subtotal * 0.05); // 5% tax for display
+  const grandTotal = subtotal + tax;
+
+  // Generate a stable order number from timestamp
+  const orderNumber = `GS-${Date.now().toString(36).toUpperCase().slice(-6)}`;
+  const orderDate = new Date().toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 
   return (
     <motion.div
       key="success"
-      initial={{ opacity: 0, scale: 0.9 }}
+      initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      className="flex flex-col items-center text-center gap-5 py-4"
+      className="flex flex-col gap-5 py-2"
+      data-ocid="checkout.success_state"
     >
-      {/* Success icon */}
-      <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{
-          delay: 0.15,
-          type: "spring",
-          stiffness: 260,
-          damping: 20,
-        }}
-        className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center"
+      {/* Success header */}
+      <div className="flex flex-col items-center text-center gap-3">
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{
+            delay: 0.15,
+            type: "spring",
+            stiffness: 260,
+            damping: 20,
+          }}
+          className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center"
+        >
+          <CheckCircle2 className="w-8 h-8 text-green-600" />
+        </motion.div>
+        <div>
+          <h3 className="font-display text-xl font-bold text-foreground mb-0.5">
+            Order Confirmed!
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            Your seeds are on their way
+          </p>
+        </div>
+      </div>
+
+      {/* ── Invoice card ── */}
+      <div
+        className="w-full border border-border rounded-2xl overflow-hidden text-sm"
+        data-ocid="checkout.invoice.card"
       >
-        <CheckCircle2 className="w-10 h-10 text-green-600" />
-      </motion.div>
+        {/* Invoice header */}
+        <div className="bg-primary/8 border-b border-border px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <FileText className="w-4 h-4 text-primary" />
+            <span className="font-semibold text-foreground text-xs uppercase tracking-wide">
+              Invoice
+            </span>
+          </div>
+          <div className="text-right">
+            <p className="font-mono text-xs font-bold text-foreground">
+              #{orderNumber}
+            </p>
+            <p className="text-xs text-muted-foreground">{orderDate}</p>
+          </div>
+        </div>
 
-      {/* Heading */}
-      <div>
-        <h3 className="font-display text-2xl font-bold text-foreground mb-1">
-          Order Placed! 🌱
-        </h3>
-        <p className="text-sm text-muted-foreground">
-          Your seeds are on their way
-        </p>
-      </div>
+        {/* Merchant + Customer info */}
+        <div className="grid grid-cols-2 gap-3 px-4 py-3 border-b border-border bg-muted/20">
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground mb-0.5">
+              From
+            </p>
+            <p className="font-semibold text-foreground text-xs">
+              GreenSprout Seeds
+            </p>
+            <p className="text-xs text-muted-foreground">
+              seeds@greensprout.com
+            </p>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground mb-0.5">
+              To
+            </p>
+            <p className="font-semibold text-foreground text-xs">
+              {userName ?? "Valued Customer"}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {isCod ? "Cash on Delivery" : "Google Pay"}
+            </p>
+          </div>
+        </div>
 
-      {/* Order summary */}
-      <div className="w-full bg-muted/40 border border-border rounded-xl p-4 space-y-2.5 text-sm">
-        <div className="flex items-center justify-between">
-          <span className="text-muted-foreground">Order Total</span>
-          <span className="font-display font-bold text-foreground">
-            {amount}
+        {/* Line items */}
+        <div className="px-4 py-3 border-b border-border space-y-2">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+            Items Ordered
+          </p>
+          {cartItems.map((item, idx) => {
+            const product = products.find((p) => p.id === item.productId);
+            if (!product) return null;
+            const lineTotal =
+              Number(product.priceInCents) * Number(item.quantity);
+            return (
+              <div
+                key={String(item.productId)}
+                className="flex items-center justify-between gap-2"
+                data-ocid={`checkout.invoice.item.${idx + 1}`}
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-foreground truncate text-xs">
+                    {product.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatPrice(product.priceInCents)} x{" "}
+                    {String(item.quantity)}
+                  </p>
+                </div>
+                <span className="font-semibold text-foreground text-xs flex-shrink-0">
+                  {formatPrice(lineTotal)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Totals */}
+        <div className="px-4 py-3 space-y-1.5">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>Subtotal</span>
+            <span>{formatPrice(subtotal)}</span>
+          </div>
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>Shipping</span>
+            <span className="text-green-600 font-medium">
+              {shipping === 0 ? "Free" : formatPrice(shipping)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>Tax (5%)</span>
+            <span>{formatPrice(tax)}</span>
+          </div>
+          <div className="h-px bg-border my-1" />
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-foreground text-sm">Total</span>
+            <span className="font-display font-bold text-foreground text-base">
+              {formatPrice(grandTotal)}
+            </span>
+          </div>
+        </div>
+
+        {/* Payment status */}
+        <div
+          className={[
+            "px-4 py-2.5 border-t border-border flex items-center justify-between",
+            isCod ? "bg-amber-50" : "bg-green-50",
+          ].join(" ")}
+        >
+          <span
+            className={[
+              "text-xs font-medium",
+              isCod ? "text-amber-700" : "text-green-700",
+            ].join(" ")}
+          >
+            {isCod ? "Payment due on delivery" : "Payment received"}
+          </span>
+          <span
+            className={[
+              "text-xs font-bold px-2 py-0.5 rounded-full",
+              isCod
+                ? "bg-amber-100 text-amber-700"
+                : "bg-green-100 text-green-700",
+            ].join(" ")}
+          >
+            {isCod ? "PENDING" : "PAID"}
           </span>
         </div>
-        <div className="flex items-center justify-between">
-          <span className="text-muted-foreground">Payment</span>
-          <span className="font-semibold text-foreground">
-            {isCod ? "Cash on Delivery" : "Google Pay"}
-          </span>
-        </div>
-        <div className="h-px bg-border" />
-        <p className="text-xs text-muted-foreground leading-relaxed text-left">
-          {isCod
-            ? `Your order will be delivered in 3–5 business days. Pay ${amount} when it arrives.`
-            : "Payment successful! Your order will be delivered in 3–5 business days."}
-        </p>
       </div>
+
+      {/* Delivery note */}
+      <p className="text-xs text-muted-foreground text-center leading-relaxed">
+        {isCod
+          ? `Expected delivery in 3-5 business days. Pay ${formatPrice(grandTotal)} when your order arrives.`
+          : "Payment confirmed. Expected delivery in 3-5 business days."}
+      </p>
 
       <Button
         className="w-full h-12 rounded-xl text-base font-semibold bg-primary hover:bg-primary/90 text-primary-foreground"
@@ -799,6 +935,9 @@ export default function CheckoutModal({
                   <SuccessStep
                     subtotal={subtotal}
                     paymentMethod={selectedMethod ?? "cod"}
+                    cartItems={cartItems}
+                    products={products}
+                    userName={userName}
                     onClose={handleClose}
                   />
                 )}

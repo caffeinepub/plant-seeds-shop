@@ -226,8 +226,6 @@ export default function ProductDetailModal({
                   src={getProductImageUrl(product.name, product.category)}
                   alt={product.name}
                   className="w-full h-full object-cover"
-                  referrerPolicy="no-referrer"
-                  crossOrigin="anonymous"
                   onError={(e) => {
                     const target = e.currentTarget;
                     target.style.display = "none";

@@ -437,8 +437,6 @@ function ProductCard({
             alt={product.name}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             loading="lazy"
-            referrerPolicy="no-referrer"
-            crossOrigin="anonymous"
             onError={(e) => {
               // Fallback to emoji overlay if image fails to load
               const target = e.currentTarget;
@@ -754,8 +752,6 @@ function CartDrawer({
                             )}
                             alt={product.name}
                             className="w-full h-full object-cover"
-                            referrerPolicy="no-referrer"
-                            crossOrigin="anonymous"
                             onError={(e) => {
                               const target = e.currentTarget;
                               target.style.display = "none";
@@ -1002,7 +998,7 @@ function Footer() {
 
 function AppInner() {
   const { actor } = useActor();
-  const { userLoggedIn, logoutUser, adminLoggedIn, userName } = useAuth();
+  const { userLoggedIn, logoutUser, logoutAdmin, userName } = useAuth();
   const queryClient = useQueryClient();
   const [appView, setAppView] = useState<AppView>("shop");
   const [activeCategory, setActiveCategory] = useState("All");
@@ -1018,18 +1014,27 @@ function AppInner() {
   const initAttempted = useRef(false);
   const [initDone, setInitDone] = useState(false);
 
-  // Initialize backend data once per actor instance, then mark ready
+  // Initialize backend data: fetch products first, seed if empty, then refetch
   useEffect(() => {
     if (actor && !initAttempted.current) {
       initAttempted.current = true;
       actor
-        .initialize()
+        .getAllProducts()
+        .then((existingProducts) => {
+          if (existingProducts.length === 0) {
+            // Backend hasn't been seeded yet — initialize it
+            return actor.initialize().catch(() => {
+              // ignore — may already be initialized
+            });
+          }
+          // Products already exist, no need to initialize
+        })
         .catch(() => {
-          // ignore errors - initialize is idempotent
+          // If getAllProducts fails, still try to initialize
+          return actor.initialize().catch(() => {});
         })
         .finally(() => {
           setInitDone(true);
-          // Force re-fetch all product queries after initialization
           queryClient.invalidateQueries({ queryKey: ["products"] });
           queryClient.refetchQueries({ queryKey: ["products"] });
         });
@@ -1112,12 +1117,8 @@ function AppInner() {
   };
 
   const handleAdminClick = () => {
-    // If already logged in as admin, go directly to dashboard
-    if (adminLoggedIn) {
-      setAppView("admin-dashboard");
-    } else {
-      setAppView("admin-login");
-    }
+    // Always show login page — never auto-skip to dashboard
+    setAppView("admin-login");
   };
 
   // ── View routing ─────────────────────────────────────────────────────────
@@ -1139,7 +1140,10 @@ function AppInner() {
       <>
         <Toaster position="top-right" richColors />
         <AdminDashboard
-          onLogout={() => setAppView("shop")}
+          onLogout={() => {
+            logoutAdmin();
+            setAppView("admin-login");
+          }}
           onBack={() => setAppView("shop")}
         />
       </>
