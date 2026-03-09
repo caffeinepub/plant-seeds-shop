@@ -10,20 +10,21 @@ import type {
 } from "../backend.d";
 import { useActor } from "./useActor";
 
-export function useAllProducts() {
-  const { actor, isFetching } = useActor();
+export function useAllProducts(initDone = true) {
+  const { actor } = useActor();
   return useQuery<SeedProduct[]>({
     queryKey: ["products", "all"],
     queryFn: async () => {
       if (!actor) return [];
       return actor.getAllProducts();
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor && initDone,
+    staleTime: 0,
   });
 }
 
-export function useProductsByCategory(category: string) {
-  const { actor, isFetching } = useActor();
+export function useProductsByCategory(category: string, initDone = true) {
+  const { actor } = useActor();
   return useQuery<SeedProduct[]>({
     queryKey: ["products", "category", category],
     queryFn: async () => {
@@ -31,43 +32,45 @@ export function useProductsByCategory(category: string) {
       if (category === "All") return actor.getAllProducts();
       return actor.getProductsByCategory(category);
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor && initDone,
+    staleTime: 0,
   });
 }
 
 export function useSearchProducts(searchTerm: string) {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<SeedProduct[]>({
     queryKey: ["products", "search", searchTerm],
     queryFn: async () => {
       if (!actor) return [];
       return actor.searchProducts(searchTerm);
     },
-    enabled: !!actor && !isFetching && searchTerm.trim().length > 0,
+    enabled: !!actor && searchTerm.trim().length > 0,
+    staleTime: 0,
   });
 }
 
 export function useCart() {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<CartItem[]>({
     queryKey: ["cart"],
     queryFn: async () => {
       if (!actor) return [];
       return actor.getCart();
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor,
   });
 }
 
 export function useCartTotal() {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<bigint>({
     queryKey: ["cart", "total"],
     queryFn: async () => {
       if (!actor) return 0n;
       return actor.getCartTotal();
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor,
   });
 }
 
@@ -142,20 +145,20 @@ export function useClearCart() {
 // ─── Admin Queries ────────────────────────────────────────────────────────────
 
 export function useIsCallerAdmin() {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<boolean>({
     queryKey: ["admin", "isAdmin"],
     queryFn: async () => {
       if (!actor) return false;
       return actor.isCallerAdmin();
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor,
     staleTime: 30_000,
   });
 }
 
 export function useSalesStats() {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<SalesStats>({
     queryKey: ["admin", "salesStats"],
     queryFn: async () => {
@@ -163,55 +166,55 @@ export function useSalesStats() {
         return { totalRevenue: 0n, totalOrders: 0n, totalItemsSold: 0n };
       return actor.getSalesStats();
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor,
   });
 }
 
 export function useAllOrders() {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<Order[]>({
     queryKey: ["admin", "orders"],
     queryFn: async () => {
       if (!actor) return [];
       return actor.getAllOrders();
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor,
   });
 }
 
 export function useAllPaymentTransactions() {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<PaymentTransaction[]>({
     queryKey: ["admin", "paymentTransactions"],
     queryFn: async () => {
       if (!actor) return [];
       return actor.getAllPaymentTransactions();
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor,
   });
 }
 
 export function useAllInvoices() {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<Invoice[]>({
     queryKey: ["admin", "invoices"],
     queryFn: async () => {
       if (!actor) return [];
       return actor.getAllInvoices();
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor,
   });
 }
 
 export function usePaymentOptions() {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<PaymentOption[]>({
     queryKey: ["admin", "paymentOptions"],
     queryFn: async () => {
       if (!actor) return [];
       return actor.getPaymentOptions();
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor,
   });
 }
 

@@ -1,7 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Toaster } from "@/components/ui/sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -32,6 +31,8 @@ import { toast } from "sonner";
 import type { CartItem, SeedProduct } from "./backend.d";
 import AdminDashboard from "./components/AdminDashboard";
 import AdminLogin from "./components/AdminLogin";
+import CheckoutModal from "./components/CheckoutModal";
+import ProductDetailModal from "./components/ProductDetailModal";
 import UserLogin from "./components/UserLogin";
 import { useActor } from "./hooks/useActor";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
@@ -45,6 +46,7 @@ import {
   useSearchProducts,
   useUpdateCartQuantity,
 } from "./hooks/useQueries";
+import { getProductImageUrl } from "./utils/productImages";
 
 type AppView = "shop" | "admin-login" | "admin-dashboard" | "user-login";
 
@@ -280,8 +282,8 @@ function Hero({
       {/* Background image */}
       <div className="absolute inset-0">
         <img
-          src="/assets/generated/hero-seeds-banner.dim_1600x700.jpg"
-          alt="Plant seeds"
+          src="/assets/generated/hero-seeds-background.dim_1400x800.jpg"
+          alt="Plant seeds background"
           className="w-full h-full object-cover"
         />
         <div className="hero-overlay absolute inset-0" />
@@ -401,11 +403,13 @@ function ProductCard({
   index,
   onAddToCart,
   isAddingToCart,
+  onViewDetails,
 }: {
   product: SeedProduct;
   index: number;
   onAddToCart: (id: bigint) => void;
   isAddingToCart: boolean;
+  onViewDetails: (product: SeedProduct) => void;
 }) {
   const stockNum = Number(product.stock);
   const isLowStock = stockNum > 0 && stockNum < 10;
@@ -421,43 +425,61 @@ function ProductCard({
       className="card-hover group"
     >
       <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-card flex flex-col h-full">
-        {/* Seed illustration area */}
-        <div className="relative h-36 flex items-center justify-center leaf-gradient overflow-hidden">
-          <div className="absolute inset-0 noise-texture opacity-40" />
-          <motion.span
-            className="text-6xl select-none"
-            whileHover={{ scale: 1.15, rotate: 5 }}
-            transition={{ type: "spring", stiffness: 300 }}
-            role="img"
-            aria-label={product.category}
-          >
-            {getCategoryEmoji(product.category)}
-          </motion.span>
+        {/* Product image — clickable to open details */}
+        <button
+          type="button"
+          className="relative h-44 flex items-center justify-center overflow-hidden cursor-pointer w-full border-0 p-0 bg-muted"
+          onClick={() => onViewDetails(product)}
+          aria-label={`View details for ${product.name}`}
+        >
+          <img
+            src={getProductImageUrl(product.name, product.category)}
+            alt={product.name}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            loading="lazy"
+            referrerPolicy="no-referrer"
+            crossOrigin="anonymous"
+            onError={(e) => {
+              // Fallback to emoji overlay if image fails to load
+              const target = e.currentTarget;
+              target.style.display = "none";
+              const parent = target.parentElement;
+              if (parent) {
+                parent.classList.add("leaf-gradient");
+                const emoji = document.createElement("span");
+                emoji.className = "text-6xl select-none";
+                emoji.textContent = getCategoryEmoji(product.category);
+                parent.appendChild(emoji);
+              }
+            }}
+          />
+          {/* Dark gradient overlay for badges readability */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-black/10 pointer-events-none" />
           {/* Category badge */}
           <div
-            className={`absolute top-3 left-3 text-xs font-medium px-2.5 py-1 rounded-full border ${colorClass}`}
+            className={`absolute top-3 left-3 text-xs font-medium px-2.5 py-1 rounded-full border backdrop-blur-sm ${colorClass}`}
           >
             {product.category}
           </div>
           {/* Stock badge */}
           {isLowStock && (
-            <div className="absolute top-3 right-3 bg-amber-500/90 text-white text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+            <div className="absolute top-3 right-3 bg-amber-500/90 text-white text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 backdrop-blur-sm">
               <AlertCircle className="w-3 h-3" />
               Low Stock
             </div>
           )}
           {isOutOfStock && (
-            <div className="absolute top-3 right-3 bg-destructive/90 text-destructive-foreground text-xs font-semibold px-2 py-0.5 rounded-full">
+            <div className="absolute top-3 right-3 bg-destructive/90 text-destructive-foreground text-xs font-semibold px-2 py-0.5 rounded-full backdrop-blur-sm">
               Out of Stock
             </div>
           )}
           {!isLowStock && !isOutOfStock && (
-            <div className="absolute top-3 right-3 bg-primary/90 text-primary-foreground text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+            <div className="absolute top-3 right-3 bg-primary/90 text-primary-foreground text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 backdrop-blur-sm">
               <CheckCircle2 className="w-3 h-3" />
               In Stock
             </div>
           )}
-        </div>
+        </button>
 
         {/* Content */}
         <div className="flex flex-col gap-2 p-4 flex-1">
@@ -467,6 +489,14 @@ function ProductCard({
           <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed flex-1">
             {product.description}
           </p>
+          <button
+            type="button"
+            onClick={() => onViewDetails(product)}
+            data-ocid={`product.detail_button.${index + 1}`}
+            className="text-xs text-primary hover:underline font-medium mt-1 self-start"
+          >
+            View Details →
+          </button>
         </div>
 
         {/* Footer */}
@@ -506,11 +536,13 @@ function ProductGrid({
   isLoading,
   onAddToCart,
   addingIds,
+  onViewDetails,
 }: {
   products: SeedProduct[];
   isLoading: boolean;
   onAddToCart: (id: bigint) => void;
   addingIds: Set<string>;
+  onViewDetails: (product: SeedProduct) => void;
 }) {
   if (isLoading) {
     return (
@@ -567,6 +599,7 @@ function ProductGrid({
           index={index}
           onAddToCart={onAddToCart}
           isAddingToCart={addingIds.has(product.id.toString())}
+          onViewDetails={onViewDetails}
         />
       ))}
     </div>
@@ -581,19 +614,19 @@ function CartDrawer({
   cartItems,
   products,
   onLoginRequired,
+  onCheckoutOpen,
 }: {
   isOpen: boolean;
   onClose: () => void;
   cartItems: CartItem[];
   products: SeedProduct[];
   onLoginRequired: () => void;
+  onCheckoutOpen: () => void;
 }) {
   const updateQty = useUpdateCartQuantity();
   const removeItem = useRemoveFromCart();
   const clearCart = useClearCart();
-  const { actor } = useActor();
   const { userLoggedIn } = useAuth();
-  const [checkingOut, setCheckingOut] = useState(false);
 
   const getProduct = (productId: bigint) =>
     products.find((p) => p.id === productId);
@@ -604,7 +637,7 @@ function CartDrawer({
     return sum + Number(product.priceInCents) * Number(item.quantity);
   }, 0);
 
-  const handleCheckout = async () => {
+  const handleCheckout = () => {
     if (!userLoggedIn) {
       onClose();
       onLoginRequired();
@@ -613,22 +646,7 @@ function CartDrawer({
       });
       return;
     }
-
-    setCheckingOut(true);
-    try {
-      if (actor) {
-        await actor.placeOrder("Credit Card");
-      }
-    } catch {
-      // non-blocking — order may still be placed
-    }
-    onClose();
-    toast.success("Order placed! Thank you.", {
-      description: "Your seeds are on their way 🌱",
-      duration: 4000,
-    });
-    clearCart.mutate();
-    setCheckingOut(false);
+    onCheckoutOpen();
   };
 
   return (
@@ -653,7 +671,7 @@ function CartDrawer({
             exit={{ x: "100%" }}
             transition={{ type: "spring", stiffness: 300, damping: 32 }}
             data-ocid="cart.panel"
-            className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-md bg-card shadow-botanical-lg flex flex-col"
+            className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-md bg-card shadow-botanical-lg flex flex-col overflow-hidden"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-border">
@@ -710,7 +728,7 @@ function CartDrawer({
                 </Button>
               </motion.div>
             ) : (
-              <ScrollArea className="flex-1 px-6">
+              <div className="flex-1 min-h-0 overflow-y-auto px-6">
                 <div className="py-4 space-y-4">
                   {cartItems.map((item, idx) => {
                     const product = getProduct(item.productId);
@@ -727,9 +745,35 @@ function CartDrawer({
                         data-ocid={`cart.item.${idx + 1}`}
                         className="bg-background rounded-xl p-3.5 flex gap-3 items-start border border-border/60"
                       >
-                        {/* Emoji */}
-                        <div className="w-11 h-11 rounded-lg leaf-gradient flex items-center justify-center flex-shrink-0 text-xl">
-                          {getCategoryEmoji(product.category)}
+                        {/* Product thumbnail */}
+                        <div className="w-11 h-11 rounded-lg overflow-hidden flex-shrink-0 bg-muted">
+                          <img
+                            src={getProductImageUrl(
+                              product.name,
+                              product.category,
+                            )}
+                            alt={product.name}
+                            className="w-full h-full object-cover"
+                            referrerPolicy="no-referrer"
+                            crossOrigin="anonymous"
+                            onError={(e) => {
+                              const target = e.currentTarget;
+                              target.style.display = "none";
+                              const parent = target.parentElement;
+                              if (parent) {
+                                parent.classList.add(
+                                  "leaf-gradient",
+                                  "flex",
+                                  "items-center",
+                                  "justify-center",
+                                  "text-lg",
+                                );
+                                parent.textContent = getCategoryEmoji(
+                                  product.category,
+                                );
+                              }
+                            }}
+                          />
                         </div>
 
                         {/* Info */}
@@ -797,7 +841,7 @@ function CartDrawer({
                     );
                   })}
                 </div>
-              </ScrollArea>
+              </div>
             )}
 
             {/* Footer */}
@@ -832,15 +876,10 @@ function CartDrawer({
                 <Button
                   className="w-full rounded-xl h-12 text-base font-semibold gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
                   onClick={handleCheckout}
-                  disabled={checkingOut || clearCart.isPending}
+                  disabled={clearCart.isPending}
                   data-ocid="cart.checkout_button"
                 >
-                  {checkingOut ? (
-                    <>
-                      <span className="w-4 h-4 border-2 border-primary-foreground/40 border-t-primary-foreground rounded-full animate-spin" />
-                      Placing Order...
-                    </>
-                  ) : !userLoggedIn ? (
+                  {!userLoggedIn ? (
                     <>
                       <LogIn className="w-4.5 h-4.5" />
                       Login to Checkout
@@ -963,26 +1002,39 @@ function Footer() {
 
 function AppInner() {
   const { actor } = useActor();
-  const { userLoggedIn, logoutUser, adminLoggedIn } = useAuth();
+  const { userLoggedIn, logoutUser, adminLoggedIn, userName } = useAuth();
   const queryClient = useQueryClient();
   const [appView, setAppView] = useState<AppView>("shop");
   const [activeCategory, setActiveCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [addingIds, setAddingIds] = useState<Set<string>>(new Set());
-  const [initialized, setInitialized] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<SeedProduct | null>(
+    null,
+  );
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const initAttempted = useRef(false);
+  const [initDone, setInitDone] = useState(false);
 
-  // Initialize backend data
+  // Initialize backend data once per actor instance, then mark ready
   useEffect(() => {
-    if (actor && !initialized) {
-      actor.initialize().then(() => {
-        setInitialized(true);
-        queryClient.invalidateQueries({ queryKey: ["products"] });
-      });
+    if (actor && !initAttempted.current) {
+      initAttempted.current = true;
+      actor
+        .initialize()
+        .catch(() => {
+          // ignore errors - initialize is idempotent
+        })
+        .finally(() => {
+          setInitDone(true);
+          // Force re-fetch all product queries after initialization
+          queryClient.invalidateQueries({ queryKey: ["products"] });
+          queryClient.refetchQueries({ queryKey: ["products"] });
+        });
     }
-  }, [actor, initialized, queryClient]);
+  }, [actor, queryClient]);
 
   // Debounce search
   useEffect(() => {
@@ -997,15 +1049,16 @@ function AppInner() {
 
   const isSearchActive = debouncedSearch.trim().length > 0;
 
-  // Product queries
+  // Product queries — wait for init so data is seeded before first fetch
   const { data: categoryProducts = [], isLoading: categoryLoading } =
-    useProductsByCategory(activeCategory);
+    useProductsByCategory(activeCategory, initDone);
   const { data: searchResults = [], isLoading: searchLoading } =
     useSearchProducts(debouncedSearch);
   const { data: cartItems = [] } = useCart();
-  const { data: allProducts = [] } = useAllProducts();
+  const { data: allProducts = [] } = useAllProducts(initDone);
 
   const addToCart = useAddToCart();
+  const clearCart = useClearCart();
 
   const displayedProducts = isSearchActive ? searchResults : categoryProducts;
   const isLoading = isSearchActive ? searchLoading : categoryLoading;
@@ -1015,8 +1068,12 @@ function AppInner() {
     0,
   );
 
+  const handleViewDetails = useCallback((product: SeedProduct) => {
+    setSelectedProduct(product);
+  }, []);
+
   const handleAddToCart = useCallback(
-    async (productId: bigint) => {
+    async (productId: bigint, quantity = 1) => {
       // Gate: require user login to add to cart
       if (!userLoggedIn) {
         toast.info("Please login to add items to your cart.", {
@@ -1030,7 +1087,7 @@ function AppInner() {
       const idStr = productId.toString();
       setAddingIds((prev) => new Set([...prev, idStr]));
       try {
-        await addToCart.mutateAsync({ productId, quantity: 1n });
+        await addToCart.mutateAsync({ productId, quantity: BigInt(quantity) });
         toast.success("Added to cart!", {
           description: "Item added successfully 🌱",
           duration: 2000,
@@ -1208,6 +1265,7 @@ function AppInner() {
                     isLoading={false}
                     onAddToCart={handleAddToCart}
                     addingIds={addingIds}
+                    onViewDetails={handleViewDetails}
                   />
                 </section>
               );
@@ -1219,6 +1277,7 @@ function AppInner() {
                 isLoading={true}
                 onAddToCart={handleAddToCart}
                 addingIds={addingIds}
+                onViewDetails={handleViewDetails}
               />
             )}
           </div>
@@ -1228,6 +1287,7 @@ function AppInner() {
             isLoading={isLoading}
             onAddToCart={handleAddToCart}
             addingIds={addingIds}
+            onViewDetails={handleViewDetails}
           />
         )}
       </main>
@@ -1267,6 +1327,39 @@ function AppInner() {
         cartItems={cartItems}
         products={allProducts}
         onLoginRequired={() => setAppView("user-login")}
+        onCheckoutOpen={() => {
+          setIsCartOpen(false);
+          setIsCheckoutOpen(true);
+        }}
+      />
+
+      {/* Checkout Modal */}
+      <CheckoutModal
+        isOpen={isCheckoutOpen}
+        onClose={() => setIsCheckoutOpen(false)}
+        cartItems={cartItems}
+        products={allProducts}
+        userName={userName}
+        onOrderPlaced={() => {
+          clearCart.mutate();
+          toast.success("Order placed! Thank you.", {
+            description: "Your seeds are on their way 🌱",
+            duration: 4000,
+          });
+        }}
+      />
+
+      {/* Product Detail Modal */}
+      <ProductDetailModal
+        product={selectedProduct}
+        onClose={() => setSelectedProduct(null)}
+        onAddToCart={(productId, qty) => {
+          handleAddToCart(productId, qty);
+          setSelectedProduct(null);
+        }}
+        isAddingToCart={
+          selectedProduct ? addingIds.has(selectedProduct.id.toString()) : false
+        }
       />
     </div>
   );

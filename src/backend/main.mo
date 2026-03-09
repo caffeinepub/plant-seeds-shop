@@ -1,17 +1,15 @@
 import Map "mo:core/Map";
 import Array "mo:core/Array";
-import Text "mo:core/Text";
-import List "mo:core/List";
-import Nat "mo:core/Nat";
-import Runtime "mo:core/Runtime";
 import Time "mo:core/Time";
-import Principal "mo:core/Principal";
-
+import List "mo:core/List";
+import Text "mo:core/Text";
+import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
+import Principal "mo:core/Principal";
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 
-// specify the data migration function in with-clause
+
 
 actor {
   let products = List.empty<SeedProduct>();
@@ -25,16 +23,16 @@ actor {
   var nextOrderId = 1;
   var nextTransactionId = 1;
   var nextInvoiceId = 1;
-  var isInitialized = false;
 
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
 
+  // Types
   public type UserProfile = {
     name : Text;
   };
 
-  type SeedProduct = {
+  public type SeedProduct = {
     id : Nat;
     name : Text;
     category : Text;
@@ -43,18 +41,18 @@ actor {
     stock : Nat;
   };
 
-  type CartItem = {
+  public type CartItem = {
     productId : Nat;
     quantity : Nat;
   };
 
-  type OrderItem = {
+  public type OrderItem = {
     productId : Nat;
     quantity : Nat;
     priceInCents : Nat;
   };
 
-  type Order = {
+  public type Order = {
     id : Nat;
     customerPrincipal : Principal;
     items : [OrderItem];
@@ -65,7 +63,7 @@ actor {
     createdAt : Int;
   };
 
-  type PaymentTransaction = {
+  public type PaymentTransaction = {
     id : Nat;
     orderId : Nat;
     amount : Nat;
@@ -74,300 +72,538 @@ actor {
     timestamp : Int;
   };
 
-  type Invoice = {
+  public type Invoice = {
     id : Nat;
     invoiceNumber : Text;
     orderId : Nat;
     issuedAt : Int;
   };
 
-  type PaymentOption = {
+  public type PaymentOption = {
     method : Text;
     enabled : Bool;
   };
 
-  type SalesStats = {
+  public type SalesStats = {
     totalRevenue : Nat;
     totalOrders : Nat;
     totalItemsSold : Nat;
   };
 
-  // User Profile Functions
+  // User Profile Functions (public for all)
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view profiles");
-    };
     userProfiles.get(caller);
   };
 
   public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
-    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Can only view your own profile");
-    };
     userProfiles.get(user);
   };
 
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can save profiles");
-    };
     userProfiles.add(caller, profile);
   };
 
-  // Initialize function - should be called once, ideally by admin
+  // Initialization Functions
   public shared ({ caller }) func initialize() : async () {
-    if (isInitialized) {
-      Runtime.trap("Already initialized");
-    };
     initializeProducts();
     initializePaymentOptions();
-    isInitialized := true;
   };
 
   func initializeProducts() {
     if (products.isEmpty()) {
-      let initialProducts = [
-        {
-          id = 1;
-          name = "Carrot Seeds";
-          category = "Vegetables";
-          description = "Heirloom carrot seeds for crispy, sweet carrots.";
-          priceInCents = 299;
-          stock = 100;
-        },
-        {
-          id = 2;
-          name = "Tomato Seeds";
-          category = "Vegetables";
-          description = "Classic red tomato seeds for juicy tomatoes.";
-          priceInCents = 349;
-          stock = 150;
-        },
-        {
-          id = 3;
-          name = "Lettuce Seeds";
-          category = "Vegetables";
-          description = "Crisp lettuce seeds for fresh salads.";
-          priceInCents = 249;
-          stock = 200;
-        },
-        {
-          id = 4;
-          name = "Cucumber Seeds";
-          category = "Vegetables";
-          description = "Refreshing cucumber seeds.";
-          priceInCents = 279;
-          stock = 120;
-        },
-        {
-          id = 5;
-          name = "Bell Pepper Seeds";
-          category = "Vegetables";
-          description = "Colorful bell pepper seeds.";
-          priceInCents = 399;
-          stock = 80;
-        },
-        {
-          id = 6;
-          name = "Strawberry Seeds";
-          category = "Fruits";
-          description = "Sweet strawberry seeds for delicious berries.";
-          priceInCents = 449;
-          stock = 90;
-        },
-        {
-          id = 7;
-          name = "Blueberry Seeds";
-          category = "Fruits";
-          description = "Antioxidant-rich blueberry seeds.";
-          priceInCents = 499;
-          stock = 70;
-        },
-        {
-          id = 8;
-          name = "Raspberry Seeds";
-          category = "Fruits";
-          description = "Tart raspberry seeds.";
-          priceInCents = 479;
-          stock = 75;
-        },
-        {
-          id = 9;
-          name = "Watermelon Seeds";
-          category = "Fruits";
-          description = "Juicy watermelon seeds for summer.";
-          priceInCents = 329;
-          stock = 110;
-        },
-        {
-          id = 10;
-          name = "Apple Seeds";
-          category = "Fruits";
-          description = "Classic apple tree seeds.";
-          priceInCents = 599;
-          stock = 50;
-        },
-        {
-          id = 11;
-          name = "Rose Seeds";
-          category = "Flowers";
-          description = "Beautiful rose seeds in various colors.";
-          priceInCents = 549;
-          stock = 60;
-        },
-        {
-          id = 12;
-          name = "Sunflower Seeds";
-          category = "Flowers";
-          description = "Bright sunflower seeds.";
-          priceInCents = 299;
-          stock = 140;
-        },
-        {
-          id = 13;
-          name = "Tulip Seeds";
-          category = "Flowers";
-          description = "Elegant tulip seeds.";
-          priceInCents = 429;
-          stock = 85;
-        },
-        {
-          id = 14;
-          name = "Daisy Seeds";
-          category = "Flowers";
-          description = "Cheerful daisy seeds.";
-          priceInCents = 279;
-          stock = 130;
-        },
-        {
-          id = 15;
-          name = "Lavender Seeds";
-          category = "Flowers";
-          description = "Fragrant lavender seeds.";
-          priceInCents = 379;
-          stock = 95;
-        },
-        {
-          id = 16;
-          name = "Basil Seeds";
-          category = "Herbs";
-          description = "Aromatic basil seeds for cooking.";
-          priceInCents = 249;
-          stock = 180;
-        },
-        {
-          id = 17;
-          name = "Mint Seeds";
-          category = "Herbs";
-          description = "Refreshing mint seeds.";
-          priceInCents = 229;
-          stock = 160;
-        },
-        {
-          id = 18;
-          name = "Parsley Seeds";
-          category = "Herbs";
-          description = "Fresh parsley seeds.";
-          priceInCents = 219;
-          stock = 170;
-        },
-        {
-          id = 19;
-          name = "Cilantro Seeds";
-          category = "Herbs";
-          description = "Flavorful cilantro seeds.";
-          priceInCents = 239;
-          stock = 155;
-        },
-        {
-          id = 20;
-          name = "Thyme Seeds";
-          category = "Herbs";
-          description = "Savory thyme seeds.";
-          priceInCents = 259;
-          stock = 145;
-        },
-        {
-          id = 21;
-          name = "Oak Tree Seeds";
-          category = "Trees";
-          description = "Majestic oak tree seeds.";
-          priceInCents = 799;
-          stock = 40;
-        },
-        {
-          id = 22;
-          name = "Pine Tree Seeds";
-          category = "Trees";
-          description = "Evergreen pine tree seeds.";
-          priceInCents = 699;
-          stock = 45;
-        },
-        {
-          id = 23;
-          name = "Maple Tree Seeds";
-          category = "Trees";
-          description = "Beautiful maple tree seeds.";
-          priceInCents = 749;
-          stock = 42;
-        },
-        {
-          id = 24;
-          name = "Cherry Tree Seeds";
-          category = "Trees";
-          description = "Flowering cherry tree seeds.";
-          priceInCents = 849;
-          stock = 35;
-        },
-        {
-          id = 25;
-          name = "Birch Tree Seeds";
-          category = "Trees";
-          description = "Elegant birch tree seeds.";
-          priceInCents = 729;
-          stock = 38;
-        },
-        {
-          id = 26;
-          name = "Aloe Vera Seeds";
-          category = "Succulents";
-          description = "Healing aloe vera seeds.";
-          priceInCents = 349;
-          stock = 100;
-        },
-        {
-          id = 27;
-          name = "Jade Plant Seeds";
-          category = "Succulents";
-          description = "Lucky jade plant seeds.";
-          priceInCents = 329;
-          stock = 105;
-        },
-        {
-          id = 28;
-          name = "Echeveria Seeds";
-          category = "Succulents";
-          description = "Rosette-forming echeveria seeds.";
-          priceInCents = 369;
-          stock = 95;
-        },
-        {
-          id = 29;
-          name = "Cactus Seeds";
-          category = "Succulents";
-          description = "Desert cactus seeds.";
-          priceInCents = 299;
-          stock = 115;
-        },
-        {
-          id = 30;
-          name = "Sedum Seeds";
-          category = "Succulents";
-          description = "Hardy sedum seeds.";
-          priceInCents = 319;
-          stock = 108;
-        },
-      ];
+      let initialProducts = List.empty<SeedProduct>();
+
+      // Vegetables
+      initialProducts.add({
+        id = 1;
+        name = "Carrot Seeds";
+        category = "Vegetables";
+        description = "Heirloom carrot seeds for crispy, sweet carrots. Great for raised beds.";
+        priceInCents = 299;
+        stock = 100;
+      });
+      initialProducts.add({
+        id = 2;
+        name = "Tomato Seeds";
+        category = "Vegetables";
+        description = "Classic red tomato seeds for juicy, vine-ripened tomatoes.";
+        priceInCents = 349;
+        stock = 150;
+      });
+      initialProducts.add({
+        id = 3;
+        name = "Lettuce Seeds";
+        category = "Vegetables";
+        description = "Crisp butterhead lettuce seeds for fresh garden salads.";
+        priceInCents = 249;
+        stock = 200;
+      });
+      initialProducts.add({
+        id = 4;
+        name = "Cucumber Seeds";
+        category = "Vegetables";
+        description = "Refreshing slicing cucumber seeds, perfect for summer gardens.";
+        priceInCents = 279;
+        stock = 120;
+      });
+      initialProducts.add({
+        id = 5;
+        name = "Bell Pepper Seeds";
+        category = "Vegetables";
+        description = "Colorful sweet bell pepper seeds in red, yellow, and green.";
+        priceInCents = 399;
+        stock = 80;
+      });
+      initialProducts.add({
+        id = 31;
+        name = "Spinach Seeds";
+        category = "Vegetables";
+        description = "Fast-growing spinach seeds rich in iron and vitamins.";
+        priceInCents = 229;
+        stock = 180;
+      });
+      initialProducts.add({
+        id = 32;
+        name = "Broccoli Seeds";
+        category = "Vegetables";
+        description = "Nutritious broccoli seeds that thrive in cool weather.";
+        priceInCents = 319;
+        stock = 130;
+      });
+      initialProducts.add({
+        id = 33;
+        name = "Zucchini Seeds";
+        category = "Vegetables";
+        description = "Prolific zucchini seeds, one plant feeds the whole family.";
+        priceInCents = 289;
+        stock = 110;
+      });
+      initialProducts.add({
+        id = 34;
+        name = "Kale Seeds";
+        category = "Vegetables";
+        description = "Hardy superfood kale seeds, frost tolerant and nutrient dense.";
+        priceInCents = 269;
+        stock = 160;
+      });
+      initialProducts.add({
+        id = 35;
+        name = "Radish Seeds";
+        category = "Vegetables";
+        description = "Quick-maturing radish seeds ready to harvest in just 25 days.";
+        priceInCents = 199;
+        stock = 220;
+      });
+
+      // Fruits
+      initialProducts.add({
+        id = 6;
+        name = "Strawberry Seeds";
+        category = "Fruits";
+        description = "Sweet strawberry seeds for delicious, sun-ripened berries.";
+        priceInCents = 449;
+        stock = 90;
+      });
+      initialProducts.add({
+        id = 7;
+        name = "Blueberry Seeds";
+        category = "Fruits";
+        description = "Antioxidant-rich blueberry seeds for fresh or baked dishes.";
+        priceInCents = 499;
+        stock = 70;
+      });
+      initialProducts.add({
+        id = 8;
+        name = "Raspberry Seeds";
+        category = "Fruits";
+        description = "Tart raspberry seeds that produce abundant summer fruit.";
+        priceInCents = 479;
+        stock = 75;
+      });
+      initialProducts.add({
+        id = 9;
+        name = "Watermelon Seeds";
+        category = "Fruits";
+        description = "Juicy heirloom watermelon seeds for warm-season gardens.";
+        priceInCents = 329;
+        stock = 110;
+      });
+      initialProducts.add({
+        id = 10;
+        name = "Apple Seeds";
+        category = "Fruits";
+        description = "Classic honeycrisp apple tree seeds for home orchards.";
+        priceInCents = 599;
+        stock = 50;
+      });
+      initialProducts.add({
+        id = 36;
+        name = "Cantaloupe Seeds";
+        category = "Fruits";
+        description = "Fragrant cantaloupe seeds for sweet summer melons.";
+        priceInCents = 349;
+        stock = 95;
+      });
+      initialProducts.add({
+        id = 37;
+        name = "Grape Seeds";
+        category = "Fruits";
+        description = "Table grape seeds perfect for trellises and arbors.";
+        priceInCents = 529;
+        stock = 65;
+      });
+      initialProducts.add({
+        id = 38;
+        name = "Lemon Tree Seeds";
+        category = "Fruits";
+        description = "Meyer lemon seeds for zesty, thin-skinned lemons.";
+        priceInCents = 649;
+        stock = 45;
+      });
+      initialProducts.add({
+        id = 39;
+        name = "Peach Seeds";
+        category = "Fruits";
+        description = "Sweet peach tree seeds for warm, sunny climates.";
+        priceInCents = 579;
+        stock = 55;
+      });
+      initialProducts.add({
+        id = 40;
+        name = "Cherry Seeds";
+        category = "Fruits";
+        description = "Bing cherry tree seeds for plump, dark sweet cherries.";
+        priceInCents = 619;
+        stock = 48;
+      });
+
+      // Flowers
+      initialProducts.add({
+        id = 11;
+        name = "Rose Seeds";
+        category = "Flowers";
+        description = "Beautiful heirloom rose seeds in deep red and pink varieties.";
+        priceInCents = 549;
+        stock = 60;
+      });
+      initialProducts.add({
+        id = 12;
+        name = "Sunflower Seeds";
+        category = "Flowers";
+        description = "Giant sunflower seeds that grow up to 10 feet tall.";
+        priceInCents = 299;
+        stock = 140;
+      });
+      initialProducts.add({
+        id = 13;
+        name = "Tulip Seeds";
+        category = "Flowers";
+        description = "Elegant Dutch tulip seeds in a rainbow of spring colors.";
+        priceInCents = 429;
+        stock = 85;
+      });
+      initialProducts.add({
+        id = 14;
+        name = "Daisy Seeds";
+        category = "Flowers";
+        description = "Cheerful Shasta daisy seeds that bloom all summer long.";
+        priceInCents = 279;
+        stock = 130;
+      });
+      initialProducts.add({
+        id = 15;
+        name = "Lavender Seeds";
+        category = "Flowers";
+        description = "Fragrant English lavender seeds beloved by pollinators.";
+        priceInCents = 379;
+        stock = 95;
+      });
+      initialProducts.add({
+        id = 41;
+        name = "Marigold Seeds";
+        category = "Flowers";
+        description = "Vibrant marigold seeds that repel pests naturally in gardens.";
+        priceInCents = 249;
+        stock = 175;
+      });
+      initialProducts.add({
+        id = 42;
+        name = "Zinnia Seeds";
+        category = "Flowers";
+        description = "Bright zinnia seeds in a riot of colors, great for cutting.";
+        priceInCents = 269;
+        stock = 155;
+      });
+      initialProducts.add({
+        id = 43;
+        name = "Petunia Seeds";
+        category = "Flowers";
+        description = "Cascading petunia seeds perfect for hanging baskets.";
+        priceInCents = 319;
+        stock = 120;
+      });
+      initialProducts.add({
+        id = 44;
+        name = "Cosmos Seeds";
+        category = "Flowers";
+        description = "Feathery cosmos seeds that attract butterflies and birds.";
+        priceInCents = 239;
+        stock = 165;
+      });
+      initialProducts.add({
+        id = 45;
+        name = "Pansy Seeds";
+        category = "Flowers";
+        description = "Cold-hardy pansy seeds with cheerful two-tone faces.";
+        priceInCents = 299;
+        stock = 140;
+      });
+
+      // Herbs
+      initialProducts.add({
+        id = 16;
+        name = "Basil Seeds";
+        category = "Herbs";
+        description = "Aromatic sweet basil seeds, essential for Italian cooking.";
+        priceInCents = 249;
+        stock = 180;
+      });
+      initialProducts.add({
+        id = 17;
+        name = "Mint Seeds";
+        category = "Herbs";
+        description = "Refreshing spearmint seeds great for teas and cocktails.";
+        priceInCents = 229;
+        stock = 160;
+      });
+      initialProducts.add({
+        id = 18;
+        name = "Parsley Seeds";
+        category = "Herbs";
+        description = "Fresh curly parsley seeds for garnish and flavoring.";
+        priceInCents = 219;
+        stock = 170;
+      });
+      initialProducts.add({
+        id = 19;
+        name = "Cilantro Seeds";
+        category = "Herbs";
+        description = "Flavorful cilantro seeds used in Mexican and Asian cuisine.";
+        priceInCents = 239;
+        stock = 155;
+      });
+      initialProducts.add({
+        id = 20;
+        name = "Thyme Seeds";
+        category = "Herbs";
+        description = "Savory English thyme seeds with strong, earthy fragrance.";
+        priceInCents = 259;
+        stock = 145;
+      });
+      initialProducts.add({
+        id = 46;
+        name = "Rosemary Seeds";
+        category = "Herbs";
+        description = "Woody rosemary seeds with intense pine-like aroma.";
+        priceInCents = 279;
+        stock = 135;
+      });
+      initialProducts.add({
+        id = 47;
+        name = "Dill Seeds";
+        category = "Herbs";
+        description = "Feathery dill seeds perfect for pickling and seafood dishes.";
+        priceInCents = 219;
+        stock = 175;
+      });
+      initialProducts.add({
+        id = 48;
+        name = "Chives Seeds";
+        category = "Herbs";
+        description = "Mild chive seeds that grow in dense, edible clumps.";
+        priceInCents = 229;
+        stock = 165;
+      });
+      initialProducts.add({
+        id = 49;
+        name = "Oregano Seeds";
+        category = "Herbs";
+        description = "Pungent Greek oregano seeds, a pizza and pasta staple.";
+        priceInCents = 249;
+        stock = 150;
+      });
+      initialProducts.add({
+        id = 50;
+        name = "Sage Seeds";
+        category = "Herbs";
+        description = "Silvery sage seeds with robust flavor for savory dishes.";
+        priceInCents = 259;
+        stock = 140;
+      });
+
+      // Trees
+      initialProducts.add({
+        id = 21;
+        name = "Oak Tree Seeds";
+        category = "Trees";
+        description = "Majestic white oak acorns that grow into century-old trees.";
+        priceInCents = 799;
+        stock = 40;
+      });
+      initialProducts.add({
+        id = 22;
+        name = "Pine Tree Seeds";
+        category = "Trees";
+        description = "Evergreen Eastern white pine seeds for year-round color.";
+        priceInCents = 699;
+        stock = 45;
+      });
+      initialProducts.add({
+        id = 23;
+        name = "Maple Tree Seeds";
+        category = "Trees";
+        description = "Sugar maple seeds famous for stunning fall foliage.";
+        priceInCents = 749;
+        stock = 42;
+      });
+      initialProducts.add({
+        id = 24;
+        name = "Cherry Tree Seeds";
+        category = "Trees";
+        description = "Ornamental Japanese cherry blossom seeds for spring beauty.";
+        priceInCents = 849;
+        stock = 35;
+      });
+      initialProducts.add({
+        id = 25;
+        name = "Birch Tree Seeds";
+        category = "Trees";
+        description = "Elegant paper birch seeds with distinctive white bark.";
+        priceInCents = 729;
+        stock = 38;
+      });
+      initialProducts.add({
+        id = 51;
+        name = "Willow Tree Seeds";
+        category = "Trees";
+        description = "Graceful weeping willow seeds perfect near water features.";
+        priceInCents = 679;
+        stock = 48;
+      });
+      initialProducts.add({
+        id = 52;
+        name = "Magnolia Seeds";
+        category = "Trees";
+        description = "Fragrant Southern magnolia seeds for large, showy blooms.";
+        priceInCents = 899;
+        stock = 30;
+      });
+      initialProducts.add({
+        id = 53;
+        name = "Redwood Seeds";
+        category = "Trees";
+        description = "Majestic coastal redwood seeds, among the tallest trees on earth.";
+        priceInCents = 999;
+        stock = 25;
+      });
+      initialProducts.add({
+        id = 54;
+        name = "Dogwood Seeds";
+        category = "Trees";
+        description = "Flowering dogwood seeds that produce stunning spring blooms.";
+        priceInCents = 769;
+        stock = 36;
+      });
+      initialProducts.add({
+        id = 55;
+        name = "Ginkgo Seeds";
+        category = "Trees";
+        description = "Ancient ginkgo tree seeds known for brilliant golden fall color.";
+        priceInCents = 829;
+        stock = 32;
+      });
+
+      // Succulents
+      initialProducts.add({
+        id = 26;
+        name = "Aloe Vera Seeds";
+        category = "Succulents";
+        description = "Healing aloe vera seeds with gel-filled leaves for skin care.";
+        priceInCents = 349;
+        stock = 100;
+      });
+      initialProducts.add({
+        id = 27;
+        name = "Jade Plant Seeds";
+        category = "Succulents";
+        description = "Lucky jade plant seeds said to bring prosperity and good fortune.";
+        priceInCents = 329;
+        stock = 105;
+      });
+      initialProducts.add({
+        id = 28;
+        name = "Echeveria Seeds";
+        category = "Succulents";
+        description = "Rosette-forming echeveria seeds in dusty rose and silver hues.";
+        priceInCents = 369;
+        stock = 95;
+      });
+      initialProducts.add({
+        id = 29;
+        name = "Cactus Seeds";
+        category = "Succulents";
+        description = "Mixed desert cactus seeds including saguaro and barrel varieties.";
+        priceInCents = 299;
+        stock = 115;
+      });
+      initialProducts.add({
+        id = 30;
+        name = "Sedum Seeds";
+        category = "Succulents";
+        description = "Hardy stonecrop sedum seeds, excellent for ground cover.";
+        priceInCents = 319;
+        stock = 108;
+      });
+      initialProducts.add({
+        id = 56;
+        name = "Haworthia Seeds";
+        category = "Succulents";
+        description = "Striped haworthia seeds that thrive in low-light conditions indoors.";
+        priceInCents = 359;
+        stock = 92;
+      });
+      initialProducts.add({
+        id = 57;
+        name = "Agave Seeds";
+        category = "Succulents";
+        description = "Bold agave seeds for dramatic drought-tolerant landscapes.";
+        priceInCents = 389;
+        stock = 85;
+      });
+      initialProducts.add({
+        id = 58;
+        name = "Sempervivum Seeds";
+        category = "Succulents";
+        description = "Frost-hardy hen and chicks seeds that spread into charming clusters.";
+        priceInCents = 279;
+        stock = 125;
+      });
+      initialProducts.add({
+        id = 59;
+        name = "Lithops Seeds";
+        category = "Succulents";
+        description = "Unique living stone seeds that mimic pebbles to avoid predators.";
+        priceInCents = 419;
+        stock = 78;
+      });
+      initialProducts.add({
+        id = 60;
+        name = "Gasteria Seeds";
+        category = "Succulents";
+        description = "Tongue-shaped gasteria seeds with spotted, glossy leaves.";
+        priceInCents = 339;
+        stock = 98;
+      });
 
       products.addAll(initialProducts.values());
     };
@@ -390,7 +626,7 @@ actor {
     };
   };
 
-  // Public shop functions - no auth required
+  // Public Shop Functions
   public query ({ caller }) func getAllProducts() : async [SeedProduct] {
     products.toArray();
   };
@@ -407,12 +643,8 @@ actor {
     ).toArray();
   };
 
-  // Cart management - requires user authentication
+  // Cart Management Functions (no auth required)
   public shared ({ caller }) func addToCart(productId : Nat, quantity : Nat) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can manage cart");
-    };
-
     if (quantity == 0) { Runtime.trap("Quantity must be greater than 0") };
 
     let product = products.toArray().find(func(p) { p.id == productId });
@@ -452,10 +684,6 @@ actor {
   };
 
   public shared ({ caller }) func updateCartQuantity(productId : Nat, quantity : Nat) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can manage cart");
-    };
-
     let cart = switch (carts.get(caller)) {
       case (null) { Runtime.trap("Cart item not found") };
       case (?c) { c };
@@ -497,10 +725,6 @@ actor {
   };
 
   public shared ({ caller }) func removeFromCart(productId : Nat) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can manage cart");
-    };
-
     let cart = switch (carts.get(caller)) {
       case (null) { Runtime.trap("Cart item not found") };
       case (?c) { c };
@@ -522,9 +746,6 @@ actor {
   };
 
   public shared ({ caller }) func clearCart() : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can manage cart");
-    };
     carts.remove(caller);
   };
 
@@ -554,12 +775,8 @@ actor {
     total;
   };
 
-  // Orders & Payment - requires user authentication
+  // Orders & Payment (public for all, no explicit permission required)
   public shared ({ caller }) func placeOrder(paymentMethod : Text) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can place orders");
-    };
-
     let cart = switch (carts.get(caller)) {
       case (null) { Runtime.trap("Cart is empty") };
       case (?c) {
@@ -635,7 +852,7 @@ actor {
     orders.values().filter(func(order) { order.customerPrincipal == caller }).toArray();
   };
 
-  // Admin functions - require admin role
+  // Admin Functions
   public query ({ caller }) func getAllOrders() : async [Order] {
     if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
       Runtime.trap("Unauthorized: Only admins can perform this action");
@@ -694,7 +911,7 @@ actor {
     orders.add(orderId, updatedOrder);
   };
 
-  // Public query - no auth required
+  // Public Functions
   public query ({ caller }) func getPaymentOptions() : async [PaymentOption] {
     paymentOptions.values().toArray();
   };
@@ -712,4 +929,3 @@ actor {
     paymentOptions.add(method, updatedOption);
   };
 };
-
