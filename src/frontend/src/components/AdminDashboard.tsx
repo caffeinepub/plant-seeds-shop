@@ -278,60 +278,36 @@ function Sidebar({
 // ─── Sales Page ───────────────────────────────────────────────────────────────
 
 function SalesPage() {
-  const { data: stats, isLoading } = useSalesStats();
+  const { data: stats, isLoading: statsLoading } = useSalesStats();
+  const { data: allOrders, isLoading: ordersLoading } = useAllOrders();
+  const isLoading = statsLoading || ordersLoading;
 
-  const monthlyData = stats
-    ? [
-        {
-          month: "Jan",
-          revenue: Math.round((Number(stats.totalRevenue) * 0.06) / 100),
-        },
-        {
-          month: "Feb",
-          revenue: Math.round((Number(stats.totalRevenue) * 0.07) / 100),
-        },
-        {
-          month: "Mar",
-          revenue: Math.round((Number(stats.totalRevenue) * 0.09) / 100),
-        },
-        {
-          month: "Apr",
-          revenue: Math.round((Number(stats.totalRevenue) * 0.08) / 100),
-        },
-        {
-          month: "May",
-          revenue: Math.round((Number(stats.totalRevenue) * 0.1) / 100),
-        },
-        {
-          month: "Jun",
-          revenue: Math.round((Number(stats.totalRevenue) * 0.11) / 100),
-        },
-        {
-          month: "Jul",
-          revenue: Math.round((Number(stats.totalRevenue) * 0.09) / 100),
-        },
-        {
-          month: "Aug",
-          revenue: Math.round((Number(stats.totalRevenue) * 0.1) / 100),
-        },
-        {
-          month: "Sep",
-          revenue: Math.round((Number(stats.totalRevenue) * 0.08) / 100),
-        },
-        {
-          month: "Oct",
-          revenue: Math.round((Number(stats.totalRevenue) * 0.07) / 100),
-        },
-        {
-          month: "Nov",
-          revenue: Math.round((Number(stats.totalRevenue) * 0.08) / 100),
-        },
-        {
-          month: "Dec",
-          revenue: Math.round((Number(stats.totalRevenue) * 0.07) / 100),
-        },
-      ]
-    : [];
+  // Build real monthly revenue from actual orders for the current year
+  const MONTHS = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+  const currentYear = new Date().getFullYear();
+  const monthlyData = MONTHS.map((month, idx) => {
+    const revenue = (allOrders ?? []).reduce((sum, order) => {
+      const date = new Date(Number(order.createdAt) / 1_000_000);
+      if (date.getFullYear() === currentYear && date.getMonth() === idx) {
+        return sum + Math.round(Number(order.totalInCents) / 100);
+      }
+      return sum;
+    }, 0);
+    return { month, revenue };
+  });
 
   const statCards = [
     {

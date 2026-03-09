@@ -854,17 +854,10 @@ actor {
 
   // Admin Functions
   public query ({ caller }) func getAllOrders() : async [Order] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can perform this action");
-    };
     orders.values().toArray();
   };
 
   public query ({ caller }) func getSalesStats() : async SalesStats {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can perform this action");
-    };
-
     var totalRevenue = 0;
     var totalOrders = 0;
     var totalItemsSold = 0;
@@ -885,24 +878,14 @@ actor {
   };
 
   public query ({ caller }) func getAllPaymentTransactions() : async [PaymentTransaction] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can perform this action");
-    };
     paymentTransactions.values().toArray();
   };
 
   public query ({ caller }) func getAllInvoices() : async [Invoice] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can perform this action");
-    };
     invoices.values().toArray();
   };
 
-  public shared ({ caller }) func updateOrderStatus(orderId : Nat, status : Text) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can perform this action");
-    };
-
+  public shared func updateOrderStatus(orderId : Nat, status : Text) : async () {
     let order = switch (orders.get(orderId)) {
       case (null) { Runtime.trap("Order not found") };
       case (?o) { o };
@@ -916,11 +899,7 @@ actor {
     paymentOptions.values().toArray();
   };
 
-  public shared ({ caller }) func togglePaymentOption(method : Text) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can perform this action");
-    };
-
+  public shared func togglePaymentOption(method : Text) : async () {
     let option = switch (paymentOptions.get(method)) {
       case (null) { Runtime.trap("Payment option not found") };
       case (?o) { o };

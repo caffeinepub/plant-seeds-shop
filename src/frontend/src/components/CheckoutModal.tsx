@@ -506,6 +506,23 @@ function GPayStep({
           </div>
         </div>
 
+        {/* QR Code */}
+        <div className="flex flex-col items-center gap-2 my-2">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            Scan to Pay
+          </p>
+          <div className="rounded-xl overflow-hidden border border-gray-200 shadow-sm bg-white p-2 w-44 h-44 flex items-center justify-center">
+            <img
+              src="/assets/uploads/Screenshot_20260309-133644.GPay-1.png"
+              alt="GPay QR Code"
+              className="w-full h-full object-contain"
+            />
+          </div>
+          <p className="text-xs text-gray-400 text-center">
+            Open Google Pay &rarr; Scan QR &rarr; Enter amount
+          </p>
+        </div>
+
         {/* Pay button */}
         <button
           type="button"

@@ -1011,7 +1011,7 @@ function AppInner() {
     null,
   );
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const hasTriedInit = useRef(false);
+  const initAttempted = useRef(false);
 
   // Debounce search
   useEffect(() => {
@@ -1036,9 +1036,9 @@ function AppInner() {
 
   // Seed backend if products come back empty
   useEffect(() => {
-    if (!actor || hasTriedInit.current) return;
-    if (!categoryLoading && categoryProducts.length === 0) {
-      hasTriedInit.current = true;
+    if (!actor || categoryLoading) return;
+    if (categoryProducts.length === 0 && !initAttempted.current) {
+      initAttempted.current = true;
       actor
         .initialize()
         .catch(() => {})
