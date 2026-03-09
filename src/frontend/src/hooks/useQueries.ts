@@ -10,7 +10,7 @@ import type {
 } from "../backend.d";
 import { useActor } from "./useActor";
 
-export function useAllProducts(initDone = true) {
+export function useAllProducts() {
   const { actor } = useActor();
   return useQuery<SeedProduct[]>({
     queryKey: ["products", "all"],
@@ -18,12 +18,12 @@ export function useAllProducts(initDone = true) {
       if (!actor) return [];
       return actor.getAllProducts();
     },
-    enabled: !!actor && initDone,
+    enabled: !!actor,
     staleTime: 0,
   });
 }
 
-export function useProductsByCategory(category: string, initDone = true) {
+export function useProductsByCategory(category: string) {
   const { actor } = useActor();
   return useQuery<SeedProduct[]>({
     queryKey: ["products", "category", category],
@@ -32,7 +32,7 @@ export function useProductsByCategory(category: string, initDone = true) {
       if (category === "All") return actor.getAllProducts();
       return actor.getProductsByCategory(category);
     },
-    enabled: !!actor && initDone,
+    enabled: !!actor,
     staleTime: 0,
   });
 }

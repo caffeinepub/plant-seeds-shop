@@ -42,9 +42,9 @@ export interface CheckoutModalProps {
 
 function formatPrice(cents: number | bigint): string {
   const num = Number(cents) / 100;
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat("en-IN", {
     style: "currency",
-    currency: "USD",
+    currency: "INR",
   }).format(num);
 }
 

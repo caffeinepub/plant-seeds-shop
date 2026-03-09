@@ -78,11 +78,11 @@ function getCategoryEmoji(category: string): string {
 }
 
 function formatPrice(cents: bigint): string {
-  const dollars = Number(cents) / 100;
-  return new Intl.NumberFormat("en-US", {
+  const rupees = Number(cents) / 100;
+  return new Intl.NumberFormat("en-IN", {
     style: "currency",
-    currency: "USD",
-  }).format(dollars);
+    currency: "INR",
+  }).format(rupees);
 }
 
 // ─── Header ──────────────────────────────────────────────────────────────────
@@ -1011,35 +1011,7 @@ function AppInner() {
     null,
   );
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const initAttempted = useRef(false);
-  const [initDone, setInitDone] = useState(false);
-
-  // Initialize backend data: fetch products first, seed if empty, then refetch
-  useEffect(() => {
-    if (actor && !initAttempted.current) {
-      initAttempted.current = true;
-      actor
-        .getAllProducts()
-        .then((existingProducts) => {
-          if (existingProducts.length === 0) {
-            // Backend hasn't been seeded yet — initialize it
-            return actor.initialize().catch(() => {
-              // ignore — may already be initialized
-            });
-          }
-          // Products already exist, no need to initialize
-        })
-        .catch(() => {
-          // If getAllProducts fails, still try to initialize
-          return actor.initialize().catch(() => {});
-        })
-        .finally(() => {
-          setInitDone(true);
-          queryClient.invalidateQueries({ queryKey: ["products"] });
-          queryClient.refetchQueries({ queryKey: ["products"] });
-        });
-    }
-  }, [actor, queryClient]);
+  const hasTriedInit = useRef(false);
 
   // Debounce search
   useEffect(() => {
@@ -1054,13 +1026,28 @@ function AppInner() {
 
   const isSearchActive = debouncedSearch.trim().length > 0;
 
-  // Product queries — wait for init so data is seeded before first fetch
+  // Product queries — always enabled when actor is ready
   const { data: categoryProducts = [], isLoading: categoryLoading } =
-    useProductsByCategory(activeCategory, initDone);
+    useProductsByCategory(activeCategory);
   const { data: searchResults = [], isLoading: searchLoading } =
     useSearchProducts(debouncedSearch);
   const { data: cartItems = [] } = useCart();
-  const { data: allProducts = [] } = useAllProducts(initDone);
+  const { data: allProducts = [] } = useAllProducts();
+
+  // Seed backend if products come back empty
+  useEffect(() => {
+    if (!actor || hasTriedInit.current) return;
+    if (!categoryLoading && categoryProducts.length === 0) {
+      hasTriedInit.current = true;
+      actor
+        .initialize()
+        .catch(() => {})
+        .finally(() => {
+          queryClient.invalidateQueries({ queryKey: ["products"] });
+          queryClient.refetchQueries({ queryKey: ["products"] });
+        });
+    }
+  }, [actor, categoryProducts, categoryLoading, queryClient]);
 
   const addToCart = useAddToCart();
   const clearCart = useClearCart();

@@ -64,9 +64,9 @@ import {
 // ─── Utils ────────────────────────────────────────────────────────────────────
 
 function formatUSD(cents: bigint): string {
-  return (Number(cents) / 100).toLocaleString("en-US", {
+  return (Number(cents) / 100).toLocaleString("en-IN", {
     style: "currency",
-    currency: "USD",
+    currency: "INR",
   });
 }
 
@@ -439,13 +439,13 @@ function SalesPage() {
                   axisLine={false}
                 />
                 <YAxis
-                  tickFormatter={(v) => `$${v}`}
+                  tickFormatter={(v) => `₹${v}`}
                   tick={{ fontSize: 11, fill: "oklch(0.48 0.06 140)" }}
                   tickLine={false}
                   axisLine={false}
                 />
                 <Tooltip
-                  formatter={(v) => [`$${v}`, "Revenue"]}
+                  formatter={(v) => [`₹${v}`, "Revenue"]}
                   contentStyle={{
                     background: "oklch(0.99 0.006 90)",
                     border: "1px solid oklch(0.87 0.03 100)",

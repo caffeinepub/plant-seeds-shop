@@ -117,11 +117,11 @@ const CARE_TIPS: Record<string, string[]> = {
 };
 
 function formatPrice(cents: bigint): string {
-  const dollars = Number(cents) / 100;
-  return new Intl.NumberFormat("en-US", {
+  const rupees = Number(cents) / 100;
+  return new Intl.NumberFormat("en-IN", {
     style: "currency",
-    currency: "USD",
-  }).format(dollars);
+    currency: "INR",
+  }).format(rupees);
 }
 
 // ─── Props ────────────────────────────────────────────────────────────────────
