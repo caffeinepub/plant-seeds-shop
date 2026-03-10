@@ -33,6 +33,7 @@ import AdminDashboard from "./components/AdminDashboard";
 import AdminLogin from "./components/AdminLogin";
 import CheckoutModal from "./components/CheckoutModal";
 import ProductDetailModal from "./components/ProductDetailModal";
+import SeasonalTrending from "./components/SeasonalTrending";
 import UserLogin from "./components/UserLogin";
 import { useActor } from "./hooks/useActor";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
@@ -1027,8 +1028,7 @@ function AppInner() {
   const isSearchActive = debouncedSearch.trim().length > 0;
 
   // Product queries — always enabled when actor is ready
-  const { data: categoryProducts = [], isLoading: categoryLoading } =
-    useProductsByCategory(activeCategory);
+  const { isLoading: categoryLoading } = useProductsByCategory(activeCategory);
   const { data: searchResults = [], isLoading: searchLoading } =
     useSearchProducts(debouncedSearch);
   const { data: cartItems = [] } = useCart();
@@ -1037,7 +1037,7 @@ function AppInner() {
   // Seed backend if products come back empty
   useEffect(() => {
     if (!actor || categoryLoading) return;
-    if (categoryProducts.length === 0 && !initAttempted.current) {
+    if (allProducts.length === 0 && !initAttempted.current) {
       initAttempted.current = true;
       actor
         .initialize()
@@ -1047,12 +1047,17 @@ function AppInner() {
           queryClient.refetchQueries({ queryKey: ["products"] });
         });
     }
-  }, [actor, categoryProducts, categoryLoading, queryClient]);
+  }, [actor, allProducts, categoryLoading, queryClient]);
 
   const addToCart = useAddToCart();
   const clearCart = useClearCart();
 
-  const displayedProducts = isSearchActive ? searchResults : categoryProducts;
+  // Use allProducts as the reliable source; filter by activeCategory when needed
+  const filteredByCategory =
+    activeCategory === "All"
+      ? allProducts
+      : allProducts.filter((p) => p.category === activeCategory);
+  const displayedProducts = isSearchActive ? searchResults : filteredByCategory;
   const isLoading = isSearchActive ? searchLoading : categoryLoading;
 
   const cartCount = cartItems.reduce(
@@ -1166,6 +1171,12 @@ function AppInner() {
       <Hero searchQuery={searchQuery} onSearch={setSearchQuery} />
 
       <FeaturesStrip />
+
+      <SeasonalTrending
+        products={allProducts}
+        onAddToCart={handleAddToCart}
+        isLoggedIn={userLoggedIn}
+      />
 
       <CategoryTabs
         activeCategory={activeCategory}
