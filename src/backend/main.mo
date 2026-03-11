@@ -907,4 +907,9 @@ actor {
     let updatedOption = { option with enabled = not option.enabled };
     paymentOptions.add(method, updatedOption);
   };
+
+  system func postupgrade() {
+    initializeProducts();
+    initializePaymentOptions();
+  };
 };

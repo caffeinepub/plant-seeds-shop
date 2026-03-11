@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   CheckCircle2,
   ChevronRight,
+  CreditCard,
   FileText,
   Loader2,
   Package,
@@ -18,8 +19,13 @@ import { useActor } from "../hooks/useActor";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type PaymentMethod = "cod" | "gpay";
-type CheckoutStep = "method" | "address" | "gpay-confirm" | "success";
+type PaymentMethod = "cod" | "gpay" | "card";
+type CheckoutStep =
+  | "method"
+  | "address"
+  | "gpay-confirm"
+  | "card-form"
+  | "success";
 
 interface DeliveryAddress {
   fullName: string;
@@ -42,9 +48,9 @@ export interface CheckoutModalProps {
 
 function formatPrice(cents: number | bigint): string {
   const num = Number(cents) / 100;
-  return new Intl.NumberFormat("en-IN", {
+  return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "INR",
+    currency: "USD",
   }).format(num);
 }
 
@@ -53,7 +59,9 @@ function formatPrice(cents: number | bigint): string {
 function StepDots({ step }: { step: CheckoutStep }) {
   const steps: CheckoutStep[] = ["method", "address", "success"];
   const stepIndex =
-    step === "gpay-confirm" ? 1 : steps.indexOf(step as CheckoutStep);
+    step === "gpay-confirm" || step === "card-form"
+      ? 1
+      : steps.indexOf(step as CheckoutStep);
 
   return (
     <div className="flex items-center justify-center gap-2">
@@ -86,6 +94,35 @@ function PaymentCard({
   onSelect: () => void;
 }) {
   const isCod = method === "cod";
+  const isCard = method === "card";
+
+  const icon = isCod ? (
+    <Truck className="w-5 h-5 text-amber-600" />
+  ) : isCard ? (
+    <CreditCard className="w-5 h-5 text-violet-600" />
+  ) : (
+    <span className="text-[#4285F4] font-bold text-lg tracking-tight font-sans">
+      G
+    </span>
+  );
+
+  const iconBg = isCod
+    ? "bg-amber-100"
+    : isCard
+      ? "bg-violet-100"
+      : "bg-[#4285F4]/10";
+
+  const label = isCod
+    ? "Cash on Delivery"
+    : isCard
+      ? "Credit / Debit Card"
+      : "Google Pay";
+
+  const sublabel = isCod
+    ? "Pay when your order arrives"
+    : isCard
+      ? "Visa, Mastercard, Rupay & more"
+      : "Pay instantly with Google Pay";
 
   return (
     <button
@@ -100,35 +137,18 @@ function PaymentCard({
       ].join(" ")}
     >
       <div className="flex items-center gap-4">
-        {/* Icon */}
         <div
           className={[
             "w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors",
-            isCod ? "bg-amber-100" : "bg-[#4285F4]/10",
+            iconBg,
           ].join(" ")}
         >
-          {isCod ? (
-            <Truck className="w-5 h-5 text-amber-600" />
-          ) : (
-            <span className="text-[#4285F4] font-bold text-lg tracking-tight font-sans">
-              G
-            </span>
-          )}
+          {icon}
         </div>
-
-        {/* Text */}
         <div className="flex-1">
-          <p className="font-semibold text-foreground text-sm">
-            {isCod ? "Cash on Delivery" : "Google Pay"}
-          </p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {isCod
-              ? "Pay when your order arrives"
-              : "Pay instantly with Google Pay"}
-          </p>
+          <p className="font-semibold text-foreground text-sm">{label}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{sublabel}</p>
         </div>
-
-        {/* Radio indicator */}
         <div
           className={[
             "w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors",
@@ -187,6 +207,11 @@ function MethodStep({
             method="gpay"
             selected={selectedMethod === "gpay"}
             onSelect={() => onSelectMethod("gpay")}
+          />
+          <PaymentCard
+            method="card"
+            selected={selectedMethod === "card"}
+            onSelect={() => onSelectMethod("card")}
           />
         </div>
       </div>
@@ -461,7 +486,6 @@ function GPayStep({
         {/* GPay header */}
         <div className="flex items-center gap-3 mb-5 pb-4 border-b border-[#4285F4]/15">
           <div className="w-10 h-10 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center">
-            {/* Google G logo using colored letters */}
             <span
               className="font-black text-lg leading-none"
               style={{
@@ -571,6 +595,253 @@ function GPayStep({
   );
 }
 
+// ─── Step 2c: Card payment form ───────────────────────────────────────────────
+
+function CardFormStep({
+  subtotal,
+  onBack,
+  onPay,
+  isPaying,
+}: {
+  subtotal: number;
+  onBack: () => void;
+  onPay: (cardType: "credit" | "debit", cardNumber: string) => void;
+  isPaying: boolean;
+}) {
+  const [cardType, setCardType] = useState<"credit" | "debit">("credit");
+  const [rawNumber, setRawNumber] = useState("");
+  const [error, setError] = useState("");
+
+  // Format raw digits as groups of 4
+  const formatCardNumber = (digits: string): string => {
+    return digits
+      .replace(/\D/g, "")
+      .slice(0, 16)
+      .replace(/(\d{4})(?=\d)/g, "$1 ");
+  };
+
+  const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const digits = e.target.value.replace(/\D/g, "").slice(0, 16);
+    setRawNumber(digits);
+    if (error) setError("");
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (rawNumber.length < 16) {
+      setError("Please enter a valid 16-digit card number");
+      return;
+    }
+    onPay(cardType, rawNumber);
+  };
+
+  const amount = formatPrice(subtotal);
+
+  return (
+    <motion.div
+      key="card-form"
+      initial={{ opacity: 0, x: 40 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -40 }}
+      transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+      className="flex flex-col gap-4"
+    >
+      {/* Card header banner */}
+      <div className="flex items-center gap-2.5 bg-violet-50 border border-violet-200 rounded-xl px-4 py-3">
+        <CreditCard className="w-4 h-4 text-violet-600 flex-shrink-0" />
+        <div>
+          <p className="text-xs font-semibold text-violet-800">Card Payment</p>
+          <p className="text-xs text-violet-700">Paying {amount} securely</p>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        {/* Card type selection */}
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            Card Type
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            {/* Credit Card */}
+            <button
+              type="button"
+              data-ocid="checkout.card_type_credit.radio"
+              onClick={() => setCardType("credit")}
+              className={[
+                "flex items-center gap-2.5 rounded-xl border-2 px-4 py-3 transition-all duration-150",
+                cardType === "credit"
+                  ? "border-violet-500 bg-violet-50"
+                  : "border-border bg-card hover:border-violet-300",
+              ].join(" ")}
+            >
+              <div
+                className={[
+                  "w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors",
+                  cardType === "credit"
+                    ? "border-violet-500"
+                    : "border-muted-foreground/30",
+                ].join(" ")}
+              >
+                {cardType === "credit" && (
+                  <div className="w-2 h-2 rounded-full bg-violet-500" />
+                )}
+              </div>
+              <span
+                className={[
+                  "text-sm font-medium",
+                  cardType === "credit" ? "text-violet-700" : "text-foreground",
+                ].join(" ")}
+              >
+                Credit
+              </span>
+            </button>
+
+            {/* Debit Card */}
+            <button
+              type="button"
+              data-ocid="checkout.card_type_debit.radio"
+              onClick={() => setCardType("debit")}
+              className={[
+                "flex items-center gap-2.5 rounded-xl border-2 px-4 py-3 transition-all duration-150",
+                cardType === "debit"
+                  ? "border-violet-500 bg-violet-50"
+                  : "border-border bg-card hover:border-violet-300",
+              ].join(" ")}
+            >
+              <div
+                className={[
+                  "w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors",
+                  cardType === "debit"
+                    ? "border-violet-500"
+                    : "border-muted-foreground/30",
+                ].join(" ")}
+              >
+                {cardType === "debit" && (
+                  <div className="w-2 h-2 rounded-full bg-violet-500" />
+                )}
+              </div>
+              <span
+                className={[
+                  "text-sm font-medium",
+                  cardType === "debit" ? "text-violet-700" : "text-foreground",
+                ].join(" ")}
+              >
+                Debit
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* Card number field */}
+        <div className="space-y-2">
+          <Label
+            htmlFor="checkout-cardnumber"
+            className="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
+          >
+            Card Number
+          </Label>
+          {/* Visual card preview */}
+          <div className="w-full rounded-2xl bg-gradient-to-br from-violet-600 to-violet-900 p-4 shadow-md relative overflow-hidden">
+            {/* decorative circles */}
+            <div className="absolute -top-4 -right-4 w-24 h-24 rounded-full bg-white/5" />
+            <div className="absolute -bottom-6 -left-4 w-32 h-32 rounded-full bg-white/5" />
+            <div className="flex items-center justify-between mb-4">
+              <CreditCard className="w-6 h-6 text-white/80" />
+              <span className="text-xs font-bold text-white/60 uppercase tracking-widest">
+                {cardType === "credit" ? "Credit" : "Debit"}
+              </span>
+            </div>
+            <p className="font-mono text-white text-lg tracking-widest font-bold min-h-[1.75rem]">
+              {rawNumber.length > 0
+                ? formatCardNumber(rawNumber)
+                : "•••• •••• •••• ••••"}
+            </p>
+            <div className="mt-3 flex items-end justify-between">
+              <div>
+                <p className="text-white/50 text-xs uppercase tracking-wider">
+                  Card Holder
+                </p>
+                <p className="text-white text-sm font-semibold">Your Name</p>
+              </div>
+              <div className="text-right">
+                <p className="text-white/50 text-xs uppercase tracking-wider">
+                  Expires
+                </p>
+                <p className="text-white text-sm font-semibold">MM/YY</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Number input */}
+          <Input
+            id="checkout-cardnumber"
+            data-ocid="checkout.card_number.input"
+            value={formatCardNumber(rawNumber)}
+            onChange={handleNumberChange}
+            placeholder="1234 5678 9012 3456"
+            inputMode="numeric"
+            autoComplete="cc-number"
+            maxLength={19}
+            className={[
+              "font-mono text-base tracking-widest h-12 rounded-xl",
+              error ? "border-destructive" : "",
+            ].join(" ")}
+          />
+          {error && (
+            <p
+              className="text-xs text-destructive"
+              data-ocid="checkout.card.error_state"
+            >
+              {error}
+            </p>
+          )}
+          <p className="text-xs text-muted-foreground">
+            Enter the 16-digit number on the front of your card.
+          </p>
+        </div>
+
+        {/* Actions */}
+        <div className="flex flex-col gap-2 mt-1">
+          <Button
+            type="submit"
+            className="w-full h-12 rounded-xl font-semibold gap-2 bg-violet-600 hover:bg-violet-700 text-white"
+            disabled={isPaying || rawNumber.length < 16}
+            data-ocid="checkout.card_pay.primary_button"
+          >
+            {isPaying ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              <>
+                <CreditCard className="w-4 h-4" />
+                Confirm Payment — {amount}
+              </>
+            )}
+          </Button>
+
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full h-10 rounded-xl text-muted-foreground gap-1.5"
+            onClick={onBack}
+            disabled={isPaying}
+            data-ocid="checkout.card_back.secondary_button"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Change payment method
+          </Button>
+        </div>
+      </form>
+
+      <p className="text-center text-xs text-muted-foreground">
+        🔒 Your card details are secured. Simulated payment.
+      </p>
+    </motion.div>
+  );
+}
+
 // ─── Step 3: Order success + Invoice ──────────────────────────────────────────
 
 function SuccessStep({
@@ -589,17 +860,27 @@ function SuccessStep({
   onClose: () => void;
 }) {
   const isCod = paymentMethod === "cod";
-  const shipping = 0; // free shipping
-  const tax = Math.round(subtotal * 0.05); // 5% tax for display
+  const isCard = paymentMethod === "card";
+  const shipping = 0;
+  const tax = Math.round(subtotal * 0.05);
   const grandTotal = subtotal + tax;
 
-  // Generate a stable order number from timestamp
   const orderNumber = `GS-${Date.now().toString(36).toUpperCase().slice(-6)}`;
   const orderDate = new Date().toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
     day: "numeric",
   });
+
+  // payment method display label
+  const paymentLabel = isCod
+    ? "Cash on Delivery"
+    : isCard
+      ? "Card"
+      : "Google Pay";
+
+  // badge style: PENDING for COD & Card, PAID for GPay
+  const isPending = isCod || isCard;
 
   return (
     <motion.div
@@ -676,9 +957,7 @@ function SuccessStep({
             <p className="font-semibold text-foreground text-xs">
               {userName ?? "Valued Customer"}
             </p>
-            <p className="text-xs text-muted-foreground">
-              {isCod ? "Cash on Delivery" : "Google Pay"}
-            </p>
+            <p className="text-xs text-muted-foreground">{paymentLabel}</p>
           </div>
         </div>
 
@@ -744,26 +1023,30 @@ function SuccessStep({
         <div
           className={[
             "px-4 py-2.5 border-t border-border flex items-center justify-between",
-            isCod ? "bg-amber-50" : "bg-green-50",
+            isPending ? "bg-amber-50" : "bg-green-50",
           ].join(" ")}
         >
           <span
             className={[
               "text-xs font-medium",
-              isCod ? "text-amber-700" : "text-green-700",
+              isPending ? "text-amber-700" : "text-green-700",
             ].join(" ")}
           >
-            {isCod ? "Payment due on delivery" : "Payment received"}
+            {isCod
+              ? "Payment due on delivery"
+              : isCard
+                ? "Card payment received"
+                : "Payment received"}
           </span>
           <span
             className={[
               "text-xs font-bold px-2 py-0.5 rounded-full",
-              isCod
+              isPending
                 ? "bg-amber-100 text-amber-700"
                 : "bg-green-100 text-green-700",
             ].join(" ")}
           >
-            {isCod ? "PENDING" : "PAID"}
+            {isPending ? "PENDING" : "PAID"}
           </span>
         </div>
       </div>
@@ -804,24 +1087,20 @@ export default function CheckoutModal({
   const [isPlacing, setIsPlacing] = useState(false);
   const [subtotal, setSubtotal] = useState(0);
 
-  // Calculate subtotal whenever cartItems or products change
   const computedSubtotal = cartItems.reduce((sum, item) => {
     const product = products.find((p) => p.id === item.productId);
     if (!product) return sum;
     return sum + Number(product.priceInCents) * Number(item.quantity);
   }, 0);
 
-  // Sync subtotal on open
   const handleOpen = () => {
     setSubtotal(computedSubtotal);
     setStep("method");
     setSelectedMethod(null);
   };
 
-  // Handle close and reset
   const handleClose = () => {
     onClose();
-    // Delay reset so exit animation plays
     setTimeout(() => {
       setStep("method");
       setSelectedMethod(null);
@@ -833,9 +1112,10 @@ export default function CheckoutModal({
     setSubtotal(computedSubtotal);
     if (selectedMethod === "cod") setStep("address");
     else if (selectedMethod === "gpay") setStep("gpay-confirm");
+    else if (selectedMethod === "card") setStep("card-form");
   };
 
-  const placeOrder = async (method: "Cash on Delivery" | "GPay") => {
+  const placeOrder = async (method: "Cash on Delivery" | "GPay" | "Card") => {
     setIsPlacing(true);
     try {
       if (actor) {
@@ -844,7 +1124,6 @@ export default function CheckoutModal({
       setStep("success");
       onOrderPlaced();
     } catch {
-      // still move to success for demo purposes
       setStep("success");
       onOrderPlaced();
     } finally {
@@ -857,10 +1136,18 @@ export default function CheckoutModal({
   };
 
   const handleGPayOrder = async () => {
-    // 1.5s simulated processing
     setIsPlacing(true);
     await new Promise((resolve) => setTimeout(resolve, 1500));
     await placeOrder("GPay");
+  };
+
+  const handleCardOrder = async (
+    _cardType: "credit" | "debit",
+    _cardNumber: string,
+  ) => {
+    setIsPlacing(true);
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    await placeOrder("Card");
   };
 
   return (
@@ -899,6 +1186,7 @@ export default function CheckoutModal({
                     {step === "method" && "Choose Payment"}
                     {step === "address" && "Delivery Address"}
                     {step === "gpay-confirm" && "Pay with GPay"}
+                    {step === "card-form" && "Pay by Card"}
                     {step === "success" && "Order Confirmed"}
                   </h2>
                   <div className="mt-1.5">
@@ -945,6 +1233,14 @@ export default function CheckoutModal({
                     userName={userName}
                     onBack={() => setStep("method")}
                     onPay={handleGPayOrder}
+                    isPaying={isPlacing}
+                  />
+                )}
+                {step === "card-form" && (
+                  <CardFormStep
+                    subtotal={subtotal}
+                    onBack={() => setStep("method")}
+                    onPay={handleCardOrder}
                     isPaying={isPlacing}
                   />
                 )}

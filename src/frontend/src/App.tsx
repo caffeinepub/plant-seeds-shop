@@ -79,11 +79,11 @@ function getCategoryEmoji(category: string): string {
 }
 
 function formatPrice(cents: bigint): string {
-  const rupees = Number(cents) / 100;
-  return new Intl.NumberFormat("en-IN", {
+  const dollars = Number(cents) / 100;
+  return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "INR",
-  }).format(rupees);
+    currency: "USD",
+  }).format(dollars);
 }
 
 // ─── Header ──────────────────────────────────────────────────────────────────
@@ -1012,7 +1012,6 @@ function AppInner() {
     null,
   );
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const initAttempted = useRef(false);
 
   // Debounce search
   useEffect(() => {
@@ -1028,26 +1027,24 @@ function AppInner() {
   const isSearchActive = debouncedSearch.trim().length > 0;
 
   // Product queries — always enabled when actor is ready
-  const { isLoading: categoryLoading } = useProductsByCategory(activeCategory);
+  useProductsByCategory(activeCategory); // keep cache warm
   const { data: searchResults = [], isLoading: searchLoading } =
     useSearchProducts(debouncedSearch);
   const { data: cartItems = [] } = useCart();
-  const { data: allProducts = [] } = useAllProducts();
+  const { data: allProducts = [], isLoading: allProductsLoading } =
+    useAllProducts();
 
   // Seed backend if products come back empty
   useEffect(() => {
-    if (!actor || categoryLoading) return;
-    if (allProducts.length === 0 && !initAttempted.current) {
-      initAttempted.current = true;
-      actor
-        .initialize()
-        .catch(() => {})
-        .finally(() => {
-          queryClient.invalidateQueries({ queryKey: ["products"] });
-          queryClient.refetchQueries({ queryKey: ["products"] });
-        });
-    }
-  }, [actor, allProducts, categoryLoading, queryClient]);
+    if (!actor) return;
+    actor
+      .initialize()
+      .catch(() => {})
+      .finally(() => {
+        queryClient.invalidateQueries({ queryKey: ["products"] });
+        queryClient.refetchQueries({ queryKey: ["products"] });
+      });
+  }, [actor, queryClient]);
 
   const addToCart = useAddToCart();
   const clearCart = useClearCart();
@@ -1058,7 +1055,7 @@ function AppInner() {
       ? allProducts
       : allProducts.filter((p) => p.category === activeCategory);
   const displayedProducts = isSearchActive ? searchResults : filteredByCategory;
-  const isLoading = isSearchActive ? searchLoading : categoryLoading;
+  const isLoading = isSearchActive ? searchLoading : allProductsLoading;
 
   const cartCount = cartItems.reduce(
     (sum, item) => sum + Number(item.quantity),

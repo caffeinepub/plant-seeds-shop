@@ -379,7 +379,7 @@ function SeasonProductCard({
 
         <div className="flex items-center justify-between mt-3">
           <span className="font-bold text-primary text-base">
-            ₹{price.toFixed(2)}
+            ${price.toFixed(2)}
           </span>
           <Button
             size="sm"
