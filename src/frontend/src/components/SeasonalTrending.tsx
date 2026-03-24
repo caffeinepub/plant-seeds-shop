@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ShoppingCart } from "lucide-react";
+import { Eye, ShoppingCart } from "lucide-react";
 import { motion } from "motion/react";
 import type { SeedProduct } from "../backend.d";
 import { getProductImageUrl } from "../utils/productImages";
@@ -150,12 +150,14 @@ const SEASON_TAB_COLORS: Record<Season, string> = {
 interface SeasonalTrendingProps {
   products: SeedProduct[];
   onAddToCart: (productId: bigint, quantity: number) => void;
+  onViewDetails: (product: SeedProduct) => void;
   isLoggedIn: boolean;
 }
 
 export default function SeasonalTrending({
   products,
   onAddToCart,
+  onViewDetails,
   isLoggedIn,
 }: SeasonalTrendingProps) {
   const currentSeason = getCurrentSeason();
@@ -286,6 +288,7 @@ export default function SeasonalTrending({
                                   seasonColor={season.color}
                                   index={idx}
                                   onAddToCart={onAddToCart}
+                                  onViewDetails={onViewDetails}
                                   isLoggedIn={isLoggedIn}
                                 />
                               );
@@ -312,6 +315,7 @@ interface SeasonProductCardProps {
   seasonColor: string;
   index: number;
   onAddToCart: (productId: bigint, quantity: number) => void;
+  onViewDetails: (product: SeedProduct) => void;
   isLoggedIn: boolean;
 }
 
@@ -321,6 +325,7 @@ function SeasonProductCard({
   seasonColor,
   index,
   onAddToCart,
+  onViewDetails,
   isLoggedIn,
 }: SeasonProductCardProps) {
   const imgSrc = getProductImageUrl(product.name, product.category);
@@ -377,21 +382,33 @@ function SeasonProductCard({
           </h3>
         </div>
 
-        <div className="flex items-center justify-between mt-3">
+        <div className="flex items-center justify-between mt-3 gap-2">
           <span className="font-bold text-primary text-base">
             ${price.toFixed(2)}
           </span>
-          <Button
-            size="sm"
-            variant={inStock ? "default" : "outline"}
-            disabled={!inStock}
-            onClick={() => onAddToCart(product.id, 1)}
-            className="text-xs h-8 gap-1.5"
-            data-ocid={`seasonal.product.button.${index}`}
-          >
-            <ShoppingCart className="h-3 w-3" />
-            {isLoggedIn ? "Add to Cart" : "Login to Buy"}
-          </Button>
+          <div className="flex items-center gap-1.5">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onViewDetails(product)}
+              className="text-xs h-8 gap-1"
+              data-ocid={`seasonal.product.details.${index}`}
+            >
+              <Eye className="h-3 w-3" />
+              View Details
+            </Button>
+            <Button
+              size="sm"
+              variant={inStock ? "default" : "outline"}
+              disabled={!inStock}
+              onClick={() => onAddToCart(product.id, 1)}
+              className="text-xs h-8 gap-1"
+              data-ocid={`seasonal.product.button.${index}`}
+            >
+              <ShoppingCart className="h-3 w-3" />
+              {isLoggedIn ? "Add" : "Login"}
+            </Button>
+          </div>
         </div>
       </div>
     </motion.div>

@@ -1173,6 +1173,7 @@ function AppInner() {
         products={allProducts}
         onAddToCart={handleAddToCart}
         isLoggedIn={userLoggedIn}
+        onViewDetails={handleViewDetails}
       />
 
       <CategoryTabs

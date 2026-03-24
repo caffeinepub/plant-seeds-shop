@@ -605,12 +605,23 @@ function CardFormStep({
 }: {
   subtotal: number;
   onBack: () => void;
-  onPay: (cardType: "credit" | "debit", cardNumber: string) => void;
+  onPay: (
+    cardType: "credit" | "debit",
+    cardNumber: string,
+    expiry: string,
+    cvv: string,
+  ) => void;
   isPaying: boolean;
 }) {
   const [cardType, setCardType] = useState<"credit" | "debit">("credit");
   const [rawNumber, setRawNumber] = useState("");
-  const [error, setError] = useState("");
+  const [expiry, setExpiry] = useState("");
+  const [cvv, setCvv] = useState("");
+  const [errors, setErrors] = useState<{
+    number?: string;
+    expiry?: string;
+    cvv?: string;
+  }>({});
 
   // Format raw digits as groups of 4
   const formatCardNumber = (digits: string): string => {
@@ -623,16 +634,57 @@ function CardFormStep({
   const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const digits = e.target.value.replace(/\D/g, "").slice(0, 16);
     setRawNumber(digits);
-    if (error) setError("");
+    if (errors.number) setErrors((prev) => ({ ...prev, number: undefined }));
+  };
+
+  const handleExpiryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value.replace(/\D/g, "").slice(0, 4);
+    if (val.length >= 3) {
+      val = `${val.slice(0, 2)}/${val.slice(2)}`;
+    }
+    setExpiry(val);
+    if (errors.expiry) setErrors((prev) => ({ ...prev, expiry: undefined }));
+  };
+
+  const handleCvvChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.replace(/\D/g, "").slice(0, 4);
+    setCvv(val);
+    if (errors.cvv) setErrors((prev) => ({ ...prev, cvv: undefined }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const errs: { number?: string; expiry?: string; cvv?: string } = {};
+
     if (rawNumber.length < 16) {
-      setError("Please enter a valid 16-digit card number");
+      errs.number = "Please enter a valid 16-digit card number";
+    }
+
+    if (expiry.length !== 5) {
+      errs.expiry = "Enter expiry in MM/YY format";
+    } else {
+      const [mm, yy] = expiry.split("/");
+      const month = Number.parseInt(mm, 10);
+      const year = Number.parseInt(yy, 10) + 2000;
+      const now = new Date();
+      const expDate = new Date(year, month - 1, 1);
+      if (month < 1 || month > 12) {
+        errs.expiry = "Invalid month (01–12)";
+      } else if (expDate < new Date(now.getFullYear(), now.getMonth(), 1)) {
+        errs.expiry = "Card has expired";
+      }
+    }
+
+    if (cvv.length < 3) {
+      errs.cvv = "CVV must be 3 or 4 digits";
+    }
+
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
       return;
     }
-    onPay(cardType, rawNumber);
+
+    onPay(cardType, rawNumber, expiry, cvv);
   };
 
   const amount = formatPrice(subtotal);
@@ -767,7 +819,9 @@ function CardFormStep({
                 <p className="text-white/50 text-xs uppercase tracking-wider">
                   Expires
                 </p>
-                <p className="text-white text-sm font-semibold">MM/YY</p>
+                <p className="text-white text-sm font-semibold font-mono">
+                  {expiry || "MM/YY"}
+                </p>
               </div>
             </div>
           </div>
@@ -784,15 +838,15 @@ function CardFormStep({
             maxLength={19}
             className={[
               "font-mono text-base tracking-widest h-12 rounded-xl",
-              error ? "border-destructive" : "",
+              errors.number ? "border-destructive" : "",
             ].join(" ")}
           />
-          {error && (
+          {errors.number && (
             <p
               className="text-xs text-destructive"
               data-ocid="checkout.card.error_state"
             >
-              {error}
+              {errors.number}
             </p>
           )}
           <p className="text-xs text-muted-foreground">
@@ -800,12 +854,85 @@ function CardFormStep({
           </p>
         </div>
 
+        {/* Expiry + CVV row */}
+        <div className="grid grid-cols-2 gap-3">
+          {/* Expiry */}
+          <div className="space-y-1.5">
+            <Label
+              htmlFor="checkout-expiry"
+              className="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
+            >
+              Expiry Date
+            </Label>
+            <Input
+              id="checkout-expiry"
+              data-ocid="checkout.card_expiry.input"
+              value={expiry}
+              onChange={handleExpiryChange}
+              placeholder="MM/YY"
+              inputMode="numeric"
+              autoComplete="cc-exp"
+              maxLength={5}
+              className={[
+                "h-12 rounded-xl font-mono tracking-wider text-base",
+                errors.expiry ? "border-destructive" : "",
+              ].join(" ")}
+            />
+            {errors.expiry && (
+              <p
+                className="text-xs text-destructive"
+                data-ocid="checkout.card_expiry.error_state"
+              >
+                {errors.expiry}
+              </p>
+            )}
+          </div>
+
+          {/* CVV */}
+          <div className="space-y-1.5">
+            <Label
+              htmlFor="checkout-cvv"
+              className="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
+            >
+              CVV
+            </Label>
+            <Input
+              id="checkout-cvv"
+              data-ocid="checkout.card_cvv.input"
+              type="password"
+              value={cvv}
+              onChange={handleCvvChange}
+              placeholder="CVV"
+              inputMode="numeric"
+              autoComplete="cc-csc"
+              maxLength={4}
+              className={[
+                "h-12 rounded-xl text-base",
+                errors.cvv ? "border-destructive" : "",
+              ].join(" ")}
+            />
+            {errors.cvv && (
+              <p
+                className="text-xs text-destructive"
+                data-ocid="checkout.card_cvv.error_state"
+              >
+                {errors.cvv}
+              </p>
+            )}
+          </div>
+        </div>
+
         {/* Actions */}
         <div className="flex flex-col gap-2 mt-1">
           <Button
             type="submit"
             className="w-full h-12 rounded-xl font-semibold gap-2 bg-violet-600 hover:bg-violet-700 text-white"
-            disabled={isPaying || rawNumber.length < 16}
+            disabled={
+              isPaying ||
+              rawNumber.length < 16 ||
+              expiry.length < 5 ||
+              cvv.length < 3
+            }
             data-ocid="checkout.card_pay.primary_button"
           >
             {isPaying ? (
@@ -872,14 +999,11 @@ function SuccessStep({
     day: "numeric",
   });
 
-  // payment method display label
   const paymentLabel = isCod
     ? "Cash on Delivery"
     : isCard
       ? "Card"
       : "Google Pay";
-
-  // badge style: PENDING for COD & Card, PAID for GPay
   const isPending = isCod || isCard;
 
   return (
@@ -1144,6 +1268,8 @@ export default function CheckoutModal({
   const handleCardOrder = async (
     _cardType: "credit" | "debit",
     _cardNumber: string,
+    _expiry: string,
+    _cvv: string,
   ) => {
     setIsPlacing(true);
     await new Promise((resolve) => setTimeout(resolve, 1200));
