@@ -73,11 +73,6 @@ const CATEGORY_COLORS: Record<string, string> = {
   All: "bg-amber-50 border-amber-200 text-amber-800",
 };
 
-function getCategoryEmoji(category: string): string {
-  const cat = CATEGORIES.find((c) => c.id === category);
-  return cat?.emoji ?? "🌱";
-}
-
 function formatPrice(cents: bigint): string {
   const dollars = Number(cents) / 100;
   return new Intl.NumberFormat("en-US", {
@@ -437,19 +432,11 @@ function ProductCard({
             src={getProductImageUrl(product.name, product.category)}
             alt={product.name}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-            loading="lazy"
+            loading="eager"
             onError={(e) => {
-              // Fallback to emoji overlay if image fails to load
-              const target = e.currentTarget;
-              target.style.display = "none";
-              const parent = target.parentElement;
-              if (parent) {
-                parent.classList.add("leaf-gradient");
-                const emoji = document.createElement("span");
-                emoji.className = "text-6xl select-none";
-                emoji.textContent = getCategoryEmoji(product.category);
-                parent.appendChild(emoji);
-              }
+              e.currentTarget.src =
+                "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400'%3E%3Crect width='600' height='400' fill='%23e8f5e9'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='80' font-family='serif'%3E%F0%9F%8C%B1%3C/text%3E%3C/svg%3E";
+              e.currentTarget.onerror = null;
             }}
           />
           {/* Dark gradient overlay for badges readability */}
@@ -754,21 +741,9 @@ function CartDrawer({
                             alt={product.name}
                             className="w-full h-full object-cover"
                             onError={(e) => {
-                              const target = e.currentTarget;
-                              target.style.display = "none";
-                              const parent = target.parentElement;
-                              if (parent) {
-                                parent.classList.add(
-                                  "leaf-gradient",
-                                  "flex",
-                                  "items-center",
-                                  "justify-center",
-                                  "text-lg",
-                                );
-                                parent.textContent = getCategoryEmoji(
-                                  product.category,
-                                );
-                              }
+                              e.currentTarget.src =
+                                "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400'%3E%3Crect width='600' height='400' fill='%23e8f5e9'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='80' font-family='serif'%3E%F0%9F%8C%B1%3C/text%3E%3C/svg%3E";
+                              e.currentTarget.onerror = null;
                             }}
                           />
                         </div>
@@ -1000,6 +975,7 @@ function AppInner() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [addingIds, setAddingIds] = useState<Set<string>>(new Set());
+  const [initialized, setInitialized] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<SeedProduct | null>(
     null,
   );
@@ -1035,6 +1011,7 @@ function AppInner() {
       .finally(() => {
         queryClient.invalidateQueries({ queryKey: ["products"] });
         queryClient.refetchQueries({ queryKey: ["products"] });
+        setInitialized(true);
       });
   }, [actor, queryClient]);
 
@@ -1047,7 +1024,9 @@ function AppInner() {
       ? allProducts
       : allProducts.filter((p) => p.category === activeCategory);
   const displayedProducts = isSearchActive ? searchResults : filteredByCategory;
-  const isLoading = isSearchActive ? searchLoading : allProductsLoading;
+  const isLoading = isSearchActive
+    ? searchLoading
+    : allProductsLoading || !initialized;
 
   const cartCount = cartItems.reduce(
     (sum, item) => sum + Number(item.quantity),

@@ -166,7 +166,7 @@ export default function ProductDetailModal({
   const tips = product
     ? (CARE_TIPS[product.category] ?? CARE_TIPS.Vegetables)
     : [];
-  const emoji = product ? (CATEGORY_EMOJIS[product.category] ?? "🌱") : "🌱";
+  const _emoji = product ? (CATEGORY_EMOJIS[product.category] ?? "🌱") : "🌱";
   const colorClass = product
     ? (CATEGORY_COLORS[product.category] ??
       "bg-amber-50 border-amber-200 text-amber-800")
@@ -227,17 +227,9 @@ export default function ProductDetailModal({
                   alt={product.name}
                   className="w-full h-full object-cover"
                   onError={(e) => {
-                    const target = e.currentTarget;
-                    target.style.display = "none";
-                    const parent = target.parentElement;
-                    if (parent) {
-                      parent.classList.add("leaf-gradient");
-                      const emojiSpan = document.createElement("span");
-                      emojiSpan.className =
-                        "text-[96px] leading-none select-none absolute inset-0 flex items-center justify-center";
-                      emojiSpan.textContent = emoji;
-                      parent.appendChild(emojiSpan);
-                    }
+                    e.currentTarget.src =
+                      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400'%3E%3Crect width='600' height='400' fill='%23e8f5e9'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='80' font-family='serif'%3E%F0%9F%8C%B1%3C/text%3E%3C/svg%3E";
+                    e.currentTarget.onerror = null;
                   }}
                 />
                 {/* Gradient overlay for readability */}
