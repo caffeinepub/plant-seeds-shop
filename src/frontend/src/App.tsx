@@ -959,15 +959,7 @@ function Footer() {
             </span>
           </div>
           <p className="text-sm text-muted-foreground text-center">
-            © {year}. Built with ❤️ using{" "}
-            <a
-              href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(typeof window !== "undefined" ? window.location.hostname : "")}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:underline"
-            >
-              caffeine.ai
-            </a>
+            © {year}. Built by bharanjb
           </p>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <button
