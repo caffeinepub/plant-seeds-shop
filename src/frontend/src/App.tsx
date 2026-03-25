@@ -976,6 +976,7 @@ function AppInner() {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [addingIds, setAddingIds] = useState<Set<string>>(new Set());
   const [initialized, setInitialized] = useState(false);
+
   const [selectedProduct, setSelectedProduct] = useState<SeedProduct | null>(
     null,
   );
@@ -1004,15 +1005,19 @@ function AppInner() {
 
   // Seed backend if products come back empty
   useEffect(() => {
-    if (!actor) return;
+    // Safety: mark initialized after 5s even if actor never connects
+    const timeout = setTimeout(() => setInitialized(true), 5000);
+    if (!actor) return () => clearTimeout(timeout);
     actor
       .initialize()
       .catch(() => {})
       .finally(() => {
+        clearTimeout(timeout);
         queryClient.invalidateQueries({ queryKey: ["products"] });
         queryClient.refetchQueries({ queryKey: ["products"] });
         setInitialized(true);
       });
+    return () => clearTimeout(timeout);
   }, [actor, queryClient]);
 
   const addToCart = useAddToCart();
@@ -1026,7 +1031,7 @@ function AppInner() {
   const displayedProducts = isSearchActive ? searchResults : filteredByCategory;
   const isLoading = isSearchActive
     ? searchLoading
-    : allProductsLoading || !initialized;
+    : allProductsLoading || (!initialized && allProducts.length === 0);
 
   const cartCount = cartItems.reduce(
     (sum, item) => sum + Number(item.quantity),

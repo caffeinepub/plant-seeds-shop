@@ -545,6 +545,12 @@ function GPayStep({
           <p className="text-xs text-gray-400 text-center">
             Open Google Pay &rarr; Scan QR &rarr; Enter amount
           </p>
+          <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 mt-1">
+            <span className="text-xs text-gray-500">UPI ID:</span>
+            <span className="text-xs font-semibold text-gray-800 select-all">
+              bharanjb2@oksbi
+            </span>
+          </div>
         </div>
 
         {/* Pay button */}
