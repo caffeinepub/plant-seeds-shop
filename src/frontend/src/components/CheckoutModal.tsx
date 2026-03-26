@@ -537,7 +537,7 @@ function GPayStep({
           </p>
           <div className="rounded-xl overflow-hidden border border-gray-200 shadow-sm bg-white p-2 w-44 h-44 flex items-center justify-center">
             <img
-              src="/assets/uploads/Screenshot_20260309-133644.GPay-1.png"
+              src="/assets/generated/gpay-qr-bharanjb2.dim_400x400.png"
               alt="GPay QR Code"
               className="w-full h-full object-contain"
             />

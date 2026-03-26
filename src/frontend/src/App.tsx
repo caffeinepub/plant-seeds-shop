@@ -1006,7 +1006,7 @@ function AppInner() {
   // Seed backend if products come back empty
   useEffect(() => {
     // Safety: mark initialized after 5s even if actor never connects
-    const timeout = setTimeout(() => setInitialized(true), 5000);
+    const timeout = setTimeout(() => setInitialized(true), 3000);
     if (!actor) return () => clearTimeout(timeout);
     actor
       .initialize()
