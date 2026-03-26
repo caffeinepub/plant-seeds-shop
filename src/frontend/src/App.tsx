@@ -32,6 +32,7 @@ import type { CartItem, SeedProduct } from "./backend.d";
 import AdminDashboard from "./components/AdminDashboard";
 import AdminLogin from "./components/AdminLogin";
 import CheckoutModal from "./components/CheckoutModal";
+import DatingPage from "./components/DatingPage";
 import ProductDetailModal from "./components/ProductDetailModal";
 import SeasonalTrending from "./components/SeasonalTrending";
 import UserLogin from "./components/UserLogin";
@@ -49,7 +50,12 @@ import {
 } from "./hooks/useQueries";
 import { getProductImageUrl } from "./utils/productImages";
 
-type AppView = "shop" | "admin-login" | "admin-dashboard" | "user-login";
+type AppView =
+  | "shop"
+  | "admin-login"
+  | "admin-dashboard"
+  | "user-login"
+  | "dating";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -87,12 +93,14 @@ function Header({
   cartCount,
   onCartOpen,
   onAdminClick,
+  onDatingClick,
   onLoginClick,
   onLogout,
 }: {
   cartCount: number;
   onCartOpen: () => void;
   onAdminClick: () => void;
+  onDatingClick: () => void;
   onLoginClick: () => void;
   onLogout: () => void;
 }) {
@@ -133,6 +141,14 @@ function Header({
                 {item}
               </button>
             ))}
+            <button
+              type="button"
+              data-ocid="nav.dating.link"
+              onClick={onDatingClick}
+              className="text-sm font-medium text-rose-500 hover:text-rose-600 transition-colors"
+            >
+              ❤️ Dating
+            </button>
             <button
               type="button"
               data-ocid="nav.admin.link"
@@ -1086,6 +1102,10 @@ function AppInner() {
     setAppView("admin-login");
   };
 
+  const handleDatingClick = () => {
+    setAppView("dating");
+  };
+
   // ── View routing ─────────────────────────────────────────────────────────
 
   if (appView === "admin-login") {
@@ -1127,6 +1147,27 @@ function AppInner() {
     );
   }
 
+  // ── Dating view ──────────────────────────────────────────────────────────
+
+  if (appView === "dating") {
+    return (
+      <>
+        <Toaster position="top-right" richColors />
+        <div className="min-h-screen bg-background">
+          <Header
+            cartCount={cartCount}
+            onCartOpen={() => setIsCartOpen(true)}
+            onAdminClick={handleAdminClick}
+            onDatingClick={handleDatingClick}
+            onLoginClick={() => setAppView("user-login")}
+            onLogout={logoutUser}
+          />
+          <DatingPage />
+        </div>
+      </>
+    );
+  }
+
   // ── Shop view ─────────────────────────────────────────────────────────────
 
   return (
@@ -1137,6 +1178,7 @@ function AppInner() {
         cartCount={cartCount}
         onCartOpen={() => setIsCartOpen(true)}
         onAdminClick={handleAdminClick}
+        onDatingClick={handleDatingClick}
         onLoginClick={() => setAppView("user-login")}
         onLogout={logoutUser}
       />

@@ -1,21 +1,23 @@
-# Plant Seeds Shop
+# GreenSprout Seeds
 
 ## Current State
-The shop has 60 products seeded in the backend across 6 categories. Product loading uses an `initAttempted` ref that gates initialization to run only once per React session. The `useActor` hook returns an actor for anonymous users without Internet Identity. Products are loaded via `useProductsByCategory` and `useAllProducts`, both gated on an `initDone` state flag.
+Full e-commerce plant seeds app with shop, cart, checkout, admin portal, and seasonal trending. Navigation has Home, Shop, About links. AppView type covers shop, admin-login, admin-dashboard, user-login.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Nothing new to add.
+- A new "Dating" page accessible from the main navigation bar
+- DatingPage component with 6 profile cards (Sarah, James, Priya, Arjun, Emily, Rahul) each showing a generated photo, name, age, interests (plant/nature themed), and a "Connect" button
+- AppView extended with "dating" value
 
 ### Modify
-- Fix the product loading logic in `App.tsx`: remove the `initAttempted` ref and `initDone` state gate. Instead, directly fetch products as soon as the actor is ready (no init gate). If the product list comes back empty, call `initialize()` then refetch. This ensures products always load regardless of session state or canister resets.
-- Simplify `useProductsByCategory` and `useAllProducts` in `useQueries.ts` to not require an `initDone` parameter — always enabled when actor is present.
+- App.tsx: extend AppView type to include "dating"
+- Nav bar: add "Dating" link alongside Home, Shop, About
+- Main render: show DatingPage when appView === "dating"
 
 ### Remove
-- Remove `initAttempted` ref, `initDone` state, and the `useEffect` initialization block in `App.tsx`.
-- Remove `initDone` parameter from `useAllProducts` and `useProductsByCategory` hooks.
+- Nothing removed
 
 ## Implementation Plan
-1. Update `useQueries.ts`: remove `initDone` param from `useAllProducts` and `useProductsByCategory`, always enable when actor is ready.
-2. Update `App.tsx`: remove `initAttempted` ref, `initDone` state, and the init `useEffect`. Add a simpler `useEffect` that watches for actor + empty products and calls `initialize()` then invalidates queries. Pass no `initDone` to the hooks.
+1. Create src/frontend/src/components/DatingPage.tsx with profile cards grid
+2. Update App.tsx: add "dating" to AppView, add nav link, render DatingPage on that view
